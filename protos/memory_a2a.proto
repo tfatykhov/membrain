@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package memory_bridge;
+
+// The Neuromorphic Memory Unit service
+// Provides associative memory operations for LLM agents
+service MemoryUnit {
+  // Store a context vector with learning enabled
+  rpc Remember (MemoryPacket) returns (Ack) {}
+
+  // Query for associated memories via pattern completion
+  rpc Recall (QueryPacket) returns (ContextResponse) {}
+
+  // Trigger sleep phase for memory consolidation
+  rpc Consolidate (SleepSignal) returns (Ack) {}
+  
+  // Health check
+  rpc Ping (Empty) returns (Ack) {}
+}
+
+// A memory to be stored
+message MemoryPacket {
+  string context_id = 1;      // UUID of the text chunk
+  repeated float vector = 2;  // Dense embedding (e.g., 1536-d from OpenAI)
+  float importance = 3;       // 0.0 to 1.0 - modulates learning rate
+  map<string, string> metadata = 4;  // Optional metadata
+}
+
+// A query for associative recall
+message QueryPacket {
+  repeated float vector = 1;  // Query embedding
+  float threshold = 2;        // Similarity threshold (0.0 to 1.0)
+  int32 max_results = 3;      // Maximum number of results to return
+}
+
+// Response containing recalled memory IDs
+message ContextResponse {
+  repeated string context_ids = 1;  // IDs of recalled memories
+  repeated float confidences = 2;   // Confidence scores for each
+  float overall_confidence = 3;     // Overall recall confidence
+}
+
+// Signal to trigger memory consolidation (sleep phase)
+message SleepSignal {
+  int32 duration_ms = 1;      // Duration of consolidation in milliseconds
+  bool prune_weak = 2;        // Whether to prune weak associations
+}
+
+// Acknowledgment message
+message Ack {
+  bool success = 1;
+  string message = 2;
+}
+
+// Empty message for health checks
+message Empty {}

@@ -1,0 +1,113 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "membrain"
+version = "0.1.0"
+description = "Neuromorphic Memory Bridge for LLM Agents - SNN-based associative memory"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Tim Fatykhov", email = "tfatykhov@gmail.com" }
+]
+keywords = [
+    "neuromorphic",
+    "snn",
+    "memory",
+    "llm",
+    "agents",
+    "nengo",
+    "loihi",
+    "grpc",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "nengo>=3.2.0",
+    "nengo-loihi>=1.1.0",
+    "lava-nc>=0.5.0",
+    "grpcio>=1.50.0",
+    "grpcio-tools>=1.50.0",
+    "numpy>=1.24.0",
+    "protobuf>=4.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/tfatykhov/membrain"
+Documentation = "https://github.com/tfatykhov/membrain#readme"
+Repository = "https://github.com/tfatykhov/membrain.git"
+Issues = "https://github.com/tfatykhov/membrain/issues"
+
+[project.scripts]
+membrain = "membrain.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/membrain"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.isort]
+known-first-party = ["membrain"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/membrain"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
