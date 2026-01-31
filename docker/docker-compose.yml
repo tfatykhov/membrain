@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  membrain:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: membrain
+    ports:
+      - "50051:50051"
+    environment:
+      - LOIHI_BACKEND=SIM
+      - MEMBRAIN_PORT=50051
+      - LOG_LEVEL=INFO
+    volumes:
+      - membrain_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; grpc.insecure_channel('localhost:50051').close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  membrain_data:
+    driver: local
