@@ -239,11 +239,17 @@ class BiCameralMemory:
                 f"Expected shape ({self.dimensions},), got {query_vector.shape}"
             )
 
-        # Inject query (learning should ideally be disabled, but Voja is unsupervised)
+        # Disable learning during recall to prevent memory drift
+        self.learning_conn.learning_rule_type.learning_rate = 0
+
+        # Inject query
         self._input_value = query_vector.astype(np.float32).copy()
 
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
+
+        # Re-enable learning
+        self.learning_conn.learning_rule_type.learning_rate = self.learning_rate
 
         # Read output probe (attractor state)
         output_data = self._simulator.data[self.output_probe]
