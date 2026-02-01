@@ -108,7 +108,7 @@ class TokenAuthInterceptor(grpc.ServerInterceptor):
 
         # Check against all valid tokens using timing-safe comparison
         authenticated = False
-        for client_id, valid_header in self._valid_headers.items():
+        for _client_id, valid_header in self._valid_headers.items():
             if len(auth_bytes) == len(valid_header):
                 if hmac.compare_digest(auth_bytes, valid_header):
                     authenticated = True
