@@ -191,8 +191,8 @@ class FlyHash:
         Returns:
             Jaccard similarity (0.0 to 1.0).
         """
-        intersection = np.sum(np.logical_and(hash1, hash2))
-        union = np.sum(np.logical_or(hash1, hash2))
+        intersection: int = int(np.sum(np.logical_and(hash1, hash2)))
+        union: int = int(np.sum(np.logical_or(hash1, hash2)))
         return float(intersection / union) if union > 0 else 0.0
 
     def __repr__(self) -> str:
