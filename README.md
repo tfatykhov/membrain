@@ -184,12 +184,14 @@ membrain/
 ## Roadmap
 
 - [x] PRD and architecture design
-- [ ] Project scaffolding and CI/CD
-- [ ] FlyHash encoder implementation
-- [ ] Nengo SNN core
-- [ ] gRPC server
+- [x] Project scaffolding and CI/CD
+- [x] FlyHash encoder implementation
+- [x] Nengo SNN core (BiCameralMemory)
+- [x] Learning gate for read-only recall
+- [ ] gRPC server (Feature 01)
 - [ ] Docker containerization
 - [ ] Integration tests
+- [ ] Lava process integration (Feature 04)
 - [ ] Loihi hardware migration path
 
 ## References
