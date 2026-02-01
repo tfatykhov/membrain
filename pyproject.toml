@@ -116,6 +116,10 @@ module = "membrain.proto.*"
 ignore_missing_imports = true
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = "membrain.server"
+disable_error_code = ["name-defined", "attr-defined"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
