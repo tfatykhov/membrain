@@ -1,9 +1,9 @@
 # Feature 03: Neuromorphic Core (Nengo-Loihi)
 
-**Status:** Not Started  
-**Priority:** P0 - Critical Path  
-**Target File:** `src/membrain/core.py`  
-**Depends On:** Feature 02 (FlyHash Encoder)  
+**Status:** In Progress (PR pending)
+**Priority:** P0 - Critical Path
+**Target File:** `src/membrain/core.py`
+**Depends On:** Feature 02 (FlyHash Encoder)
 **Required By:** Feature 01 (gRPC Server)
 
 ---
@@ -86,11 +86,11 @@ class MemoryEntry:
 class BiCameralMemory:
     """
     Spiking Neural Network for associative memory.
-    
+
     Implements a hippocampus-like memory system using Nengo
     with Loihi-compatible constraints.
     """
-    
+
     def __init__(
         self,
         n_neurons: int = 1000,
@@ -101,7 +101,7 @@ class BiCameralMemory:
     ):
         """
         Initialize the BiCameralMemory network.
-        
+
         Args:
             n_neurons: Number of neurons in memory ensemble
             dimensions: Dimension of sparse input (FlyHash output)
@@ -114,18 +114,18 @@ class BiCameralMemory:
         self.learning_rate = learning_rate
         self.synapse = synapse
         self.dt = dt
-        
+
         # Memory index: context_id -> MemoryEntry
         self._memory_index: dict[str, MemoryEntry] = {}
-        
+
         # Build the Nengo network
         self._build_network()
         self._simulator: Optional[nengo_loihi.Simulator] = None
-    
+
     def _build_network(self) -> None:
         """Construct the Nengo neural network."""
         self.model = nengo.Network(label="Hippocampus")
-        
+
         with self.model:
             # 1. Input Node: Receives sparse spike trains from FlyHash
             self._input_value = np.zeros(self.dimensions)
@@ -133,7 +133,7 @@ class BiCameralMemory:
                 output=lambda t: self._input_value,
                 size_out=self.dimensions
             )
-            
+
             # 2. Memory Ensemble: The core storage
             self.memory = nengo.Ensemble(
                 n_neurons=self.n_neurons,
@@ -141,7 +141,7 @@ class BiCameralMemory:
                 neuron_type=nengo_loihi.neurons.LoihiSpikingRectifiedLinear(),
                 label="memory_ensemble"
             )
-            
+
             # 3. Learning Connection (Plasticity)
             self.learning_conn = nengo.Connection(
                 self.input_node,
@@ -151,19 +151,19 @@ class BiCameralMemory:
                 ),
                 synapse=self.synapse
             )
-            
+
             # 4. Output Probe for reading attractor states
             self.output_probe = nengo.Probe(
                 self.memory,
                 synapse=self.synapse
             )
-            
+
             # 5. Spike probe for sparsity monitoring
             self.spike_probe = nengo.Probe(
                 self.memory.neurons,
                 'spikes'
             )
-    
+
     def build_simulator(self) -> None:
         """Build the Nengo-Loihi simulator."""
         self._simulator = nengo_loihi.Simulator(
@@ -171,7 +171,7 @@ class BiCameralMemory:
             target='sim',  # CPU emulation mode
             dt=self.dt
         )
-    
+
     def remember(
         self,
         context_id: str,
@@ -181,33 +181,33 @@ class BiCameralMemory:
     ) -> bool:
         """
         Store a memory with learning enabled.
-        
+
         Args:
             context_id: UUID of the memory
             sparse_vector: FlyHash-encoded sparse vector
             importance: Learning rate modifier (0.0-1.0)
             duration_ms: Simulation duration in milliseconds
-            
+
         Returns:
             True if successfully stored
         """
         if self._simulator is None:
             self.build_simulator()
-        
+
         # Validate input
         if sparse_vector.shape != (self.dimensions,):
             raise ValueError(f"Expected shape ({self.dimensions},)")
-        
+
         # Modulate learning rate by importance
         effective_lr = self.learning_rate * importance
         # Note: In practice, would modify learning_rule.learning_rate
-        
+
         # Set input and run simulation
         self._input_value = sparse_vector.copy()
-        
+
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
-        
+
         # Store in index
         self._memory_index[context_id] = MemoryEntry(
             context_id=context_id,
@@ -215,12 +215,12 @@ class BiCameralMemory:
             importance=importance,
             stored_at=self._simulator.time
         )
-        
+
         # Clear input
         self._input_value = np.zeros(self.dimensions)
-        
+
         return True
-    
+
     def recall(
         self,
         query_vector: np.ndarray,
@@ -230,33 +230,33 @@ class BiCameralMemory:
     ) -> List[Tuple[str, float]]:
         """
         Recall memories via pattern completion.
-        
+
         Args:
             query_vector: FlyHash-encoded query
             threshold: Minimum similarity threshold
             max_results: Maximum number of results
             duration_ms: Simulation duration in milliseconds
-            
+
         Returns:
             List of (context_id, confidence) tuples
         """
         if self._simulator is None:
             self.build_simulator()
-        
+
         # Inject query and run WITHOUT learning
         # (In Nengo, we'd temporarily disable learning)
         self._input_value = query_vector.copy()
-        
+
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
-        
+
         # Read output probe (attractor state)
         output_data = self._simulator.data[self.output_probe]
         attractor_state = output_data[-1]  # Last timestep
-        
+
         # Clear input
         self._input_value = np.zeros(self.dimensions)
-        
+
         # Match against stored memories
         results = []
         for entry in self._memory_index.values():
@@ -265,11 +265,11 @@ class BiCameralMemory:
             )
             if similarity >= threshold:
                 results.append((entry.context_id, similarity))
-        
+
         # Sort by confidence descending
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:max_results]
-    
+
     def consolidate(
         self,
         duration_ms: int = 1000,
@@ -278,23 +278,23 @@ class BiCameralMemory:
     ) -> int:
         """
         Run consolidation phase (sleep).
-        
+
         Args:
             duration_ms: Duration of consolidation
             prune_weak: Whether to prune weak associations
             prune_threshold: Importance threshold for pruning
-            
+
         Returns:
             Number of memories pruned (if prune_weak=True)
         """
         if self._simulator is None:
             return 0
-        
+
         # Run with no input (let network settle)
         self._input_value = np.zeros(self.dimensions)
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
-        
+
         pruned_count = 0
         if prune_weak:
             to_remove = [
@@ -304,29 +304,29 @@ class BiCameralMemory:
             for cid in to_remove:
                 del self._memory_index[cid]
                 pruned_count += 1
-        
+
         return pruned_count
-    
+
     def get_sparsity_rate(self) -> float:
         """
         Calculate neuron activity sparsity.
-        
+
         Returns:
             Fraction of neurons that are inactive (target: >0.90)
         """
         if self._simulator is None or len(self._simulator.data[self.spike_probe]) == 0:
             return 1.0
-        
+
         spike_data = self._simulator.data[self.spike_probe]
         active_neurons = np.sum(spike_data > 0, axis=1)
         avg_active = np.mean(active_neurons)
-        
+
         return 1.0 - (avg_active / self.n_neurons)
-    
+
     def get_synop_count(self) -> int:
         """
         Get synaptic operation count.
-        
+
         Returns:
             Number of synaptic operations in last run
         """
@@ -334,13 +334,13 @@ class BiCameralMemory:
         # For simulation, estimate based on spikes
         if self._simulator is None:
             return 0
-        
+
         spike_data = self._simulator.data[self.spike_probe]
         total_spikes = np.sum(spike_data > 0)
-        
+
         # Each spike triggers ~dimensions synaptic operations
         return int(total_spikes * self.dimensions * 0.1)  # Sparse connections
-    
+
     def _compute_similarity(
         self,
         vec1: np.ndarray,
@@ -352,7 +352,7 @@ class BiCameralMemory:
         if norm1 == 0 or norm2 == 0:
             return 0.0
         return float(np.dot(vec1, vec2) / (norm1 * norm2))
-    
+
     def reset(self) -> None:
         """Reset the memory system."""
         if self._simulator is not None:
@@ -360,12 +360,12 @@ class BiCameralMemory:
             self._simulator = None
         self._memory_index.clear()
         self._input_value = np.zeros(self.dimensions)
-    
+
     def __enter__(self):
         """Context manager entry."""
         self.build_simulator()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.reset()
@@ -458,82 +458,82 @@ class TestBiCameralMemory:
     @pytest.fixture
     def memory(self):
         return BiCameralMemory(n_neurons=100, dimensions=1000)
-    
+
     @pytest.fixture
     def encoder(self):
         return FlyHash(input_dim=128, expansion_ratio=8.0, seed=42)
-    
+
     def test_network_builds(self, memory):
         """Network should build without errors."""
         assert memory.model is not None
         assert memory.input_node is not None
         assert memory.memory is not None
-    
+
     def test_remember_stores_entry(self, memory):
         """Remember should store memory entry."""
         vector = np.random.rand(1000).astype(np.float32)
         vector[vector < 0.95] = 0  # Sparse
-        
+
         result = memory.remember("test-001", vector)
         assert result is True
         assert "test-001" in memory._memory_index
-    
+
     def test_recall_retrieves_memory(self, memory):
         """Recall should retrieve stored memory."""
         vector = np.random.rand(1000).astype(np.float32)
         vector[vector < 0.95] = 0
-        
+
         memory.remember("test-001", vector)
         results = memory.recall(vector, threshold=0.5)
-        
+
         assert len(results) > 0
         assert results[0][0] == "test-001"
-    
+
     def test_pattern_completion_with_noise(self, memory, encoder):
         """Should recall with 20% noise."""
         # Create and store original
         original = np.random.randn(128).astype(np.float32)
         sparse_original = encoder.encode(original)
-        
+
         memory.remember("noisy-test", sparse_original)
-        
+
         # Add 20% noise
         noisy = original + 0.2 * np.random.randn(128).astype(np.float32)
         sparse_noisy = encoder.encode(noisy)
-        
+
         results = memory.recall(sparse_noisy, threshold=0.3)
-        
+
         # Should still find the original
         context_ids = [r[0] for r in results]
         assert "noisy-test" in context_ids
-    
+
     def test_sparsity_rate(self, memory):
         """Sparsity should be >90%."""
         vector = np.zeros(1000, dtype=np.float32)
         vector[:50] = 1.0  # 5% active
-        
+
         memory.remember("sparse-test", vector)
         sparsity = memory.get_sparsity_rate()
-        
+
         assert sparsity > 0.90
-    
+
     def test_consolidation(self, memory):
         """Consolidation should run without error."""
         vector = np.random.rand(1000).astype(np.float32)
         vector[vector < 0.95] = 0
-        
+
         memory.remember("consol-test", vector, importance=0.05)
         pruned = memory.consolidate(prune_weak=True, prune_threshold=0.1)
-        
+
         assert pruned == 1
         assert "consol-test" not in memory._memory_index
-    
+
     def test_context_manager(self):
         """Context manager should handle lifecycle."""
         with BiCameralMemory(n_neurons=50, dimensions=500) as memory:
             vector = np.random.rand(500).astype(np.float32)
             memory.remember("ctx-test", vector)
-        
+
         # After exit, should be cleaned up
         assert memory._simulator is None
 ```
