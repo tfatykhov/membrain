@@ -20,22 +20,25 @@ def main() -> int:
     # Server command
     server_parser = subparsers.add_parser("serve", help="Start the gRPC server")
     server_parser.add_argument(
-        "--port", 
-        type=int, 
+        "--port",
+        type=int,
         default=50051,
-        help="Port to listen on (default: 50051)"
+        help="Port to listen on (default: 50051)",
     )
-    
+
     # Status command
     status_parser = subparsers.add_parser("status", help="Check server status")
     status_parser.add_argument(
         "--host",
         default="localhost:50051",
-        help="Server address (default: localhost:50051)"
+        help="Server address (default: localhost:50051)",
     )
-    
+
     # Version command
     subparsers.add_parser("version", help="Show version")
+
+    # Suppress unused variable warnings - parsers are used for side effects
+    _ = server_parser, status_parser
     
     args = parser.parse_args()
     
