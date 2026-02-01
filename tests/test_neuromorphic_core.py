@@ -334,3 +334,15 @@ class TestLearningGate:
         memory._learning_gate_value = 0.0
         memory.reset()
         assert memory._learning_gate_value == 1.0
+
+    def test_remember_enables_gate(self, memory: BiCameralMemory) -> None:
+        """Remember should enable learning gate even if previously disabled."""
+        # Disable gate manually
+        memory._learning_gate_value = 0.0
+
+        # Remember should re-enable gate
+        vector = np.zeros(500, dtype=np.float32)
+        vector[:25] = 1.0
+        memory.remember("gate-enable-test", vector)
+
+        assert memory._learning_gate_value == 1.0

@@ -203,7 +203,9 @@ class BiCameralMemory:
 
         # Set input and run simulation with learning
         self._input_value = sparse_vector.astype(np.float32).copy()
-        self._learning_enabled = True
+
+        # Ensure learning gate is enabled for remember
+        self._learning_gate_value = 1.0
 
         # Modulate learning rate by importance
         # Note: In a full implementation, we'd modify the learning rule's rate
