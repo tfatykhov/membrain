@@ -79,6 +79,9 @@ packages = ["src/membrain"]
 [tool.ruff]
 target-version = "py39"
 line-length = 100
+exclude = [
+    "src/membrain/proto/*_pb2*.py",
+]
 
 [tool.ruff.lint]
 select = [
