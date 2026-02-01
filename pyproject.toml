@@ -111,6 +111,11 @@ exclude = [
     "src/membrain/proto/",
 ]
 
+[[tool.mypy.overrides]]
+module = "membrain.proto.*"
+ignore_missing_imports = true
+ignore_errors = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
