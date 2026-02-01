@@ -4,11 +4,21 @@
 
 Membrain is a neuromorphic memory system for LLM agents, exposing a gRPC interface. It uses a biological-inspired approach to store and retrieve high-dimensional embeddings.
 
+Unlike traditional vector databases which rely on dense vector similarity search (k-NN), Membrain uses Spiking Neural Networks (SNNs) and sparse distributed representations to store and retrieve information.
+
+This approach mimics biological memory systems (specifically the hippocampus and fruit fly olfactory system) to offer:
+- **Online Learning:** Memories are learned incrementally via synaptic plasticity (Voja rule).
+- **Pattern Completion:** Retrieval is a dynamic process of settling into attractor states.
+- **Consolidation:** Offline "sleep" phases strengthen important memories and prune weak ones.
+- **Efficiency:** Sparse binary codes reduce computational cost and noise.
+
+## System Layers
+
 The system consists of three main layers:
 
-1.  **Interface Layer (gRPC Server)**: Handles A2A (Agent-to-Agent) communication, authentication, and request validation.
-2.  **Encoder Layer (FlyHash)**: Projects dense embeddings into sparse, high-dimensional binary vectors suitable for SNNs.
-3.  **Core Layer (Neuromorphic Memory)**: Uses a Spiking Neural Network (SNN) to store patterns via synaptic plasticity.
+1. **Interface Layer (gRPC Server)**: Handles A2A (Agent-to-Agent) communication, authentication, and request validation.
+2. **Encoder Layer (FlyHash)**: Projects dense embeddings into sparse, high-dimensional binary vectors suitable for SNNs.
+3. **Core Layer (Neuromorphic Memory)**: Uses a Spiking Neural Network (SNN) to store patterns via synaptic plasticity.
 
 ## Component Diagram
 
@@ -56,3 +66,47 @@ The SNN storage engine.
 - **Neurons**: Leaky Integrate-and-Fire (LIF) model.
 - **Learning**: Hebbian-style plasticity or structural plasticity (depending on implementation phase).
 - **Consolidation**: Sleep phase processing to strengthen strong memories and prune weak ones.
+
+---
+
+## Data Flow
+
+### 1. Remember (Storage)
+1. **Input:** Client sends a dense embedding vector (e.g., from a text chunk) + `context_id`.
+2. **Encode:** `FlyHash` projects the dense vector to a sparse binary vector (e.g., 20,000-d with 50 active bits).
+3. **Learn:** `BiCameralMemory` injects the sparse vector into the SNN. The Voja learning rule adjusts synaptic weights to associate the pattern with a specific population of neurons.
+4. **Index:** The sparse vector is also stored in a fast lookup index (Python dictionary) for final confidence scoring.
+
+### 2. Recall (Retrieval)
+1. **Input:** Client sends a query dense vector.
+2. **Encode:** `FlyHash` converts the query to a sparse binary vector.
+3. **Converge:** The SNN receives the query. Neural dynamics settle into an "attractor" state—the network's best guess of the original stored memory.
+4. **Match:** The resulting state is compared against the stored index using cosine similarity.
+5. **Output:** Returns `context_ids` that match above a confidence threshold.
+
+### 3. Consolidate (Maintenance)
+1. **Sleep:** The system enters a sleep mode (no external input).
+2. **Settle:** The network runs freely, allowing weights to stabilize.
+3. **Prune:** (Optional) Memories with low importance scores are removed to free up capacity.
+
+---
+
+## Directory Structure
+
+```
+src/membrain/
+├── config.py      # MembrainConfig dataclass
+├── server.py      # gRPC Server (service entry point)
+├── encoder.py     # FlyHash (sparse encoder)
+├── core.py        # BiCameralMemory (SNN implementation)
+└── proto/         # Generated protobuf stubs
+
+protos/
+└── memory_a2a.proto  # API contract
+```
+
+## Dependencies
+
+- **Nengo:** For spiking neural network simulation.
+- **NumPy:** For vector operations and math.
+- **gRPC / Protobuf:** For the server interface.
