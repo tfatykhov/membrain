@@ -70,7 +70,7 @@ def validate_token(token: str) -> tuple[bool, str | None]:
 class TokenAuthInterceptor(grpc.ServerInterceptor):
     """
     gRPC interceptor for bearer token authentication.
-    
+
     Validates the 'authorization' metadata header against configured tokens.
     Uses timing-safe comparison to prevent timing attacks.
     Supports multiple client tokens.
@@ -87,7 +87,7 @@ class TokenAuthInterceptor(grpc.ServerInterceptor):
         # Support both single token (string) and multi-client (dict)
         if isinstance(tokens, str):
             tokens = {"default": tokens}
-        
+
         self._tokens = tokens
         # Pre-compute lowercase bearer prefixes for each token
         self._valid_headers: dict[str, bytes] = {}
@@ -136,7 +136,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
     Bridges LLM agents to the neuromorphic memory system via:
     - FlyHash encoder for sparse distributed representations
     - BiCameralMemory for spiking neural network storage
-    
+
     Thread-safe: uses locks for all encoder and memory operations.
     """
 
@@ -185,7 +185,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
     def _validate_context_id(self, context_id: str) -> str | None:
         """
         Validate and sanitize context_id.
-        
+
         Returns error message if invalid, None if valid.
         """
         if not context_id:
@@ -200,7 +200,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
     def _validate_threshold(self, threshold: float) -> str | None:
         """
         Validate threshold value.
-        
+
         Returns error message if invalid, None if valid.
         """
         if threshold < MIN_THRESHOLD or threshold > MAX_THRESHOLD:
@@ -257,7 +257,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
             with self._lock:
                 # Encode via FlyHash (inside lock for thread safety)
                 sparse_vector = self.encoder.encode(vector)
-                
+
                 # Store in memory
                 self.memory.remember(
                     context_id=request.context_id,
@@ -304,11 +304,11 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
                 context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                 context.set_details(msg)
                 return memory_a2a_pb2.ContextResponse()
-            
+
             # Apply defaults for zero/unset values
             if threshold == 0:
                 threshold = 0.7
-            
+
             # Validate threshold range
             threshold_error = self._validate_threshold(threshold)
             if threshold_error:
@@ -322,7 +322,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
             with self._lock:
                 # Encode via FlyHash (inside lock for thread safety)
                 sparse_vector = self.encoder.encode(vector)
-                
+
                 # Recall from memory
                 results = self.memory.recall(
                     query_vector=sparse_vector,
@@ -446,12 +446,12 @@ class MembrainServer:
             tokens = self.auth_tokens
             if isinstance(tokens, str):
                 tokens = {"default": tokens}
-            
+
             for client_id, token in tokens.items():
                 is_valid, error = validate_token(token)
                 if not is_valid:
                     raise ValueError(f"Invalid token for client '{client_id}': {error}")
-            
+
             interceptors.append(TokenAuthInterceptor(self.auth_tokens))
             # Log client count, NOT the tokens
             logger.info(
@@ -498,11 +498,11 @@ class MembrainServer:
 def load_tokens_from_env() -> dict[str, str] | None:
     """
     Load authentication tokens from environment.
-    
+
     Supports:
     - MEMBRAIN_AUTH_TOKEN: Single token for backward compatibility
     - MEMBRAIN_AUTH_TOKENS: JSON dict of client_id->token
-    
+
     Returns dict of tokens or None if not configured.
     """
     # Try multi-client config first
@@ -511,7 +511,7 @@ def load_tokens_from_env() -> dict[str, str] | None:
         try:
             tokens = json.loads(tokens_json)
             if isinstance(tokens, dict) and all(
-                isinstance(k, str) and isinstance(v, str) 
+                isinstance(k, str) and isinstance(v, str)
                 for k, v in tokens.items()
             ):
                 return tokens
@@ -521,12 +521,12 @@ def load_tokens_from_env() -> dict[str, str] | None:
         except json.JSONDecodeError as e:
             logger.error("Failed to parse MEMBRAIN_AUTH_TOKENS: %s", e)
             return None
-    
+
     # Fall back to single token
     single_token = os.environ.get("MEMBRAIN_AUTH_TOKEN")
     if single_token:
         return {"default": single_token}
-    
+
     return None
 
 
@@ -564,7 +564,7 @@ def serve(
     n_neurons = n_neurons or int(
         os.environ.get("MEMBRAIN_N_NEURONS", DEFAULT_N_NEURONS)
     )
-    
+
     # Load tokens from args or environment
     if auth_tokens is None:
         auth_tokens = load_tokens_from_env()
