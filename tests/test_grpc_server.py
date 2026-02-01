@@ -15,7 +15,7 @@ import pytest
 grpc = pytest.importorskip("grpc")
 
 from membrain.proto import memory_a2a_pb2
-from membrain.server import MemoryUnitServicer, MembrainServer
+from membrain.server import MemoryUnitServicer, MembrainServer, TokenAuthInterceptor
 
 
 class TestPing:
@@ -279,6 +279,167 @@ class TestServerLifecycle:
 
         server.stop(grace=0.1)
         assert server._shutdown_requested is True
+
+    def test_server_with_auth_token(self) -> None:
+        """Server should accept auth_token parameter."""
+        server = MembrainServer(
+            port=50097,
+            input_dim=64,
+            expansion_ratio=4.0,
+            n_neurons=50,
+            auth_token="test-secret-token",
+        )
+
+        assert server.auth_token == "test-secret-token"
+        server.start()
+        server.stop(grace=0.1)
+
+
+class TestTokenAuth:
+    """Test token authentication interceptor."""
+
+    def test_interceptor_rejects_missing_token(self) -> None:
+        """Requests without token should be rejected."""
+        interceptor = TokenAuthInterceptor("secret-token")
+        
+        # Mock handler details with no auth header
+        handler_details = MagicMock()
+        handler_details.invocation_metadata = []
+        
+        continuation = MagicMock()
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        
+        # Should return denial handler, not call continuation
+        continuation.assert_not_called()
+
+    def test_interceptor_rejects_wrong_token(self) -> None:
+        """Requests with wrong token should be rejected."""
+        interceptor = TokenAuthInterceptor("secret-token")
+        
+        handler_details = MagicMock()
+        handler_details.invocation_metadata = [("authorization", "Bearer wrong-token")]
+        
+        continuation = MagicMock()
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        
+        continuation.assert_not_called()
+
+    def test_interceptor_accepts_valid_token(self) -> None:
+        """Requests with correct token should proceed."""
+        interceptor = TokenAuthInterceptor("secret-token")
+        
+        handler_details = MagicMock()
+        handler_details.invocation_metadata = [("authorization", "Bearer secret-token")]
+        
+        continuation = MagicMock()
+        continuation.return_value = "handler"
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        
+        continuation.assert_called_once_with(handler_details)
+        assert result == "handler"
+
+
+class TestContextIdValidation:
+    """Test context_id validation."""
+
+    @pytest.fixture
+    def servicer(self) -> MemoryUnitServicer:
+        """Create a servicer with small dimensions for testing."""
+        return MemoryUnitServicer(
+            input_dim=64,
+            expansion_ratio=4.0,
+            n_neurons=50,
+        )
+
+    def test_empty_context_id_rejected(self, servicer: MemoryUnitServicer) -> None:
+        """Empty context_id should be rejected."""
+        vector = np.random.randn(64).astype(np.float32).tolist()
+        request = memory_a2a_pb2.MemoryPacket(
+            context_id="",
+            vector=vector,
+            importance=0.8,
+        )
+        context = MagicMock()
+
+        response = servicer.Remember(request, context)
+
+        assert response.success is False
+        assert "context_id" in response.message.lower()
+
+    def test_special_chars_in_context_id_rejected(
+        self, servicer: MemoryUnitServicer
+    ) -> None:
+        """Special characters in context_id should be rejected."""
+        vector = np.random.randn(64).astype(np.float32).tolist()
+        request = memory_a2a_pb2.MemoryPacket(
+            context_id="test<script>alert(1)</script>",
+            vector=vector,
+            importance=0.8,
+        )
+        context = MagicMock()
+
+        response = servicer.Remember(request, context)
+
+        assert response.success is False
+
+    def test_valid_context_id_accepted(self, servicer: MemoryUnitServicer) -> None:
+        """Valid context_id patterns should be accepted."""
+        vector = np.random.randn(64).astype(np.float32).tolist()
+        valid_ids = ["test-001", "user_123", "ctx:abc.def", "A1-B2_C3:D4.E5"]
+        context = MagicMock()
+
+        for ctx_id in valid_ids:
+            request = memory_a2a_pb2.MemoryPacket(
+                context_id=ctx_id,
+                vector=vector,
+                importance=0.8,
+            )
+            response = servicer.Remember(request, context)
+            assert response.success is True, f"Should accept: {ctx_id}"
+
+
+class TestThresholdValidation:
+    """Test threshold validation in Recall."""
+
+    @pytest.fixture
+    def servicer(self) -> MemoryUnitServicer:
+        """Create a servicer with small dimensions for testing."""
+        return MemoryUnitServicer(
+            input_dim=64,
+            expansion_ratio=4.0,
+            n_neurons=50,
+        )
+
+    def test_threshold_above_one_rejected(self, servicer: MemoryUnitServicer) -> None:
+        """Threshold > 1.0 should be rejected."""
+        vector = np.random.randn(64).astype(np.float32).tolist()
+        request = memory_a2a_pb2.QueryPacket(
+            vector=vector,
+            threshold=1.5,
+            max_results=5,
+        )
+        context = MagicMock()
+
+        response = servicer.Recall(request, context)
+
+        context.set_code.assert_called()
+
+    def test_negative_threshold_rejected(self, servicer: MemoryUnitServicer) -> None:
+        """Negative threshold should be rejected."""
+        vector = np.random.randn(64).astype(np.float32).tolist()
+        request = memory_a2a_pb2.QueryPacket(
+            vector=vector,
+            threshold=-0.5,
+            max_results=5,
+        )
+        context = MagicMock()
+
+        response = servicer.Recall(request, context)
+
+        context.set_code.assert_called()
 
 
 class TestIntegration:
