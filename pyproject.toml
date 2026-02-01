@@ -41,6 +41,7 @@ dependencies = [
     "grpcio-tools>=1.50.0",
     "protobuf>=4.21.0",
     "nengo>=3.2.0",
+    "matplotlib>=3.5.0",
 ]
 
 [project.optional-dependencies]
