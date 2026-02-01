@@ -56,6 +56,8 @@ except ValueError as e:
     print(f"Config error: {e}")
 ```
 
+---
+
 ## Server API
 
 ### `MembrainServer`
@@ -69,7 +71,8 @@ server = MembrainServer(config=config)
 server.start()
 server.wait_for_termination()
 ```
-# API Reference
+
+---
 
 ## Protocol Buffers (v1)
 
