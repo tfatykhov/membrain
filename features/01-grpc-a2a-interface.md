@@ -1,9 +1,10 @@
 # Feature 01: A2A Interface (gRPC)
 
-**Status:** Partial (Proto defined, server stub only)  
-**Priority:** P0 - Critical Path  
-**Target File:** `src/membrain/server.py`  
+**Status:** 🔜 Next Up (Proto defined, server stub only)
+**Priority:** P0 - Critical Path
+**Target File:** `src/membrain/server.py`
 **Proto Definition:** `protos/memory_a2a.proto`
+**Depends On:** Feature 02, Feature 03
 
 ---
 

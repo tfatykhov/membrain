@@ -1,10 +1,11 @@
 # Feature 02: FlyHash Encoder
 
-**Status:** In Progress (PR pending)  
-**Priority:** P0 - Critical Path  
-**Target File:** `src/membrain/encoder.py`  
-**Depends On:** None  
+**Status:** ✅ Complete
+**Priority:** P0 - Critical Path
+**Target File:** `src/membrain/encoder.py`
+**Depends On:** None
 **Required By:** Feature 03 (Neuromorphic Core)
+**Merged:** PR #2
 
 ---
 

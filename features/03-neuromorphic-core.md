@@ -1,10 +1,11 @@
 # Feature 03: Neuromorphic Core (Nengo-Loihi)
 
-**Status:** In Progress (PR pending)
+**Status:** ✅ Complete
 **Priority:** P0 - Critical Path
 **Target File:** `src/membrain/core.py`
 **Depends On:** Feature 02 (FlyHash Encoder)
 **Required By:** Feature 01 (gRPC Server)
+**Merged:** PR #3, PR #4 (learning gate)
 
 ---
 
