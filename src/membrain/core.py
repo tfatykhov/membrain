@@ -147,7 +147,7 @@ class BiCameralMemory:
             self.output_probe = nengo.Probe(self.memory, synapse=self.synapse)
 
             # 5. Spike probe for sparsity monitoring
-            self.spike_probe = nengo.Probe(self.memory.neurons, "spikes")
+            self.spike_probe = nengo.Probe(self.memory.neurons, "output")
 
     def _ensure_simulator(self) -> None:
         """Build simulator if not already built."""
