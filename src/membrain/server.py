@@ -17,7 +17,7 @@ def serve() -> None:
     logger.info("Membrain server starting...")
     logger.info("Server not yet implemented. This is a stub.")
     logger.info("See PRD for implementation details.")
-    
+
     # Keep alive for container health checks
     try:
         while True:
