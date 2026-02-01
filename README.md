@@ -12,6 +12,9 @@ A Spiking Neural Network (SNN) based memory system that provides associative rec
 
 ## Why Membrain?
 
+> *"All competitors treat memory as Information Retrieval. We treat memory as State Reconstruction."*
+> — [Product Vision](docs/PRODUCT_VISION.md)
+
 Traditional RAG (Retrieval Augmented Generation) uses vector databases for static retrieval. Membrain is different:
 
 | Feature | Vector DB (RAG) | Membrain (SNN) |
@@ -178,6 +181,12 @@ membrain/
 - [ ] Integration tests
 - [ ] Lava process integration (Feature 04)
 - [ ] Loihi hardware migration path
+
+## Documentation
+
+- **[Product Vision](docs/PRODUCT_VISION.md)** — Strategic direction, hypotheses, and roadmap
+- **[Feature Specs](features/)** — Detailed implementation specifications
+- **[Research Notes](research/)** — Related papers and analysis
 
 ## References
 
