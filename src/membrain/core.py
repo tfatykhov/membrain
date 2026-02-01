@@ -177,6 +177,7 @@ class BiCameralMemory:
             ValueError: If sparse_vector has wrong shape.
         """
         self._ensure_simulator()
+        assert self._simulator is not None
 
         # Validate input
         if sparse_vector.shape != (self.dimensions,):
@@ -232,6 +233,7 @@ class BiCameralMemory:
             ValueError: If query_vector has wrong shape.
         """
         self._ensure_simulator()
+        assert self._simulator is not None
 
         # Validate input
         if query_vector.shape != (self.dimensions,):
@@ -323,7 +325,7 @@ class BiCameralMemory:
 
         # Count neurons that fired at least once per timestep
         active_per_step = np.sum(spike_data > 0, axis=1)
-        avg_active = np.mean(active_per_step)
+        avg_active: float = float(np.mean(active_per_step))
 
         return 1.0 - (avg_active / self.n_neurons)
 
@@ -373,6 +375,7 @@ class BiCameralMemory:
     def __enter__(self) -> BiCameralMemory:
         """Context manager entry."""
         self._ensure_simulator()
+        assert self._simulator is not None
         return self
 
     def __exit__(
