@@ -292,3 +292,57 @@ class TestContextManager:
         # After exit, simulator should be cleaned up
         assert memory._simulator is None
         assert memory.get_memory_count() == 0
+
+
+class TestLearningGate:
+    """Tests for learning gate functionality."""
+
+    @pytest.fixture
+    def memory(self) -> BiCameralMemory:
+        """Create memory for gate testing."""
+        mem = BiCameralMemory(n_neurons=50, dimensions=500)
+        yield mem
+        mem.reset()
+
+    def test_learning_gate_exists(self, memory: BiCameralMemory) -> None:
+        """Learning gate node should exist in network."""
+        assert hasattr(memory, "learning_gate")
+        assert memory.learning_gate is not None
+
+    def test_learning_gate_default_enabled(self, memory: BiCameralMemory) -> None:
+        """Learning gate should default to 0.0 (normal learning)."""
+        assert memory._learning_gate_value == 0.0
+
+    def test_recall_disables_learning(self, memory: BiCameralMemory) -> None:
+        """Recall should temporarily disable learning gate."""
+        # Store a memory first
+        vector = np.zeros(500, dtype=np.float32)
+        vector[:25] = 1.0
+        memory.remember("gate-test", vector)
+
+        # Gate should be enabled (0.0) before recall
+        assert memory._learning_gate_value == 0.0
+
+        # Recall
+        memory.recall(vector, threshold=0.1)
+
+        # Gate should be re-enabled (0.0) after recall
+        assert memory._learning_gate_value == 0.0
+
+    def test_reset_restores_gate(self, memory: BiCameralMemory) -> None:
+        """Reset should restore learning gate to enabled."""
+        memory._learning_gate_value = -1.0
+        memory.reset()
+        assert memory._learning_gate_value == 0.0
+
+    def test_remember_enables_gate(self, memory: BiCameralMemory) -> None:
+        """Remember should enable learning gate even if previously disabled."""
+        # Disable gate manually
+        memory._learning_gate_value = -1.0
+
+        # Remember should re-enable gate
+        vector = np.zeros(500, dtype=np.float32)
+        vector[:25] = 1.0
+        memory.remember("gate-enable-test", vector)
+
+        assert memory._learning_gate_value == 0.0
