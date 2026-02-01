@@ -4,6 +4,8 @@ All configuration is loaded from environment variables with sensible defaults.
 Use MembrainConfig.from_env() to load configuration at startup.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from dataclasses import dataclass, field
