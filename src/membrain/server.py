@@ -5,7 +5,7 @@ Serves the MemoryUnit A2A interface for LLM agents.
 """
 
 import logging
-import sys
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,10 +17,9 @@ def serve() -> None:
     logger.info("Membrain server starting...")
     logger.info("Server not yet implemented. This is a stub.")
     logger.info("See PRD for implementation details.")
-    
+
     # Keep alive for container health checks
     try:
-        import time
         while True:
             time.sleep(60)
     except KeyboardInterrupt:

@@ -1,6 +1,6 @@
 # Feature 02: FlyHash Encoder
 
-**Status:** Not Started  
+**Status:** In Progress (PR pending)  
 **Priority:** P0 - Critical Path  
 **Target File:** `src/membrain/encoder.py`  
 **Depends On:** None  
