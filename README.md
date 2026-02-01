@@ -1,4 +1,8 @@
-# Membrain 🧠
+<p align="center">
+  <img src="docs/logo.png" alt="Membrain Logo" width="200">
+</p>
+
+# Membrain
 
 **Neuromorphic Memory Bridge for LLM Agents**
 
