@@ -12,7 +12,6 @@ import os
 import signal
 import sys
 from concurrent import futures
-from typing import TYPE_CHECKING
 
 import grpc
 import numpy as np
@@ -20,9 +19,6 @@ import numpy as np
 from membrain.core import BiCameralMemory
 from membrain.encoder import FlyHash
 from membrain.proto import memory_a2a_pb2, memory_a2a_pb2_grpc
-
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
 
 # Configuration from environment
 DEFAULT_PORT = 50051
