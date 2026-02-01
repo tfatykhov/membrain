@@ -26,6 +26,13 @@ try:
 except ImportError:
     HAS_NENGO = False
 
+# Constants
+DEFAULT_LEARN_DURATION_MS = 50
+DEFAULT_RECALL_DURATION_MS = 20
+DEFAULT_CONSOLIDATE_DURATION_MS = 1000
+CONNECTIVITY_FACTOR = 0.1  # Estimated sparse connectivity for synop count
+SIMILARITY_EPS = 1e-9  # Epsilon for floating-point comparisons
+
 
 @dataclass
 class MemoryEntry:
@@ -176,7 +183,7 @@ class BiCameralMemory:
         context_id: str,
         sparse_vector: NDArray[np.floating],
         importance: float = 1.0,
-        duration_ms: int = 50,
+        duration_ms: int = DEFAULT_LEARN_DURATION_MS,
     ) -> bool:
         """
         Store a memory with learning enabled.
@@ -191,10 +198,14 @@ class BiCameralMemory:
             True if successfully stored.
 
         Raises:
-            ValueError: If sparse_vector has wrong shape.
+            ValueError: If sparse_vector has wrong shape or importance out of range.
         """
         self._ensure_simulator()
         assert self._simulator is not None
+
+        # Validate importance
+        if not 0.0 <= importance <= 1.0:
+            raise ValueError(f"importance must be between 0.0 and 1.0, got {importance}")
 
         # Validate input
         if sparse_vector.shape != (self.dimensions,):
@@ -203,23 +214,21 @@ class BiCameralMemory:
             )
 
         # Set input and run simulation with learning
-        self._input_value = sparse_vector.astype(np.float32).copy()
+        # Scale input by importance - this modulates learning strength
+        # (Higher importance = stronger input = faster encoder adaptation)
+        scaled_vector = sparse_vector.astype(np.float32) * importance
+        self._input_value = scaled_vector.copy()
 
         # Ensure learning gate is enabled for remember (0.0 = normal learning)
         self._learning_gate_value = 0.0
 
-        # Modulate learning rate by importance
-        # Note: In a full implementation, we'd modify the learning rule's rate
-        # For now, we scale the input signal
-        self._input_value *= importance
-
-        steps = int(duration_ms / (self.dt * 1000))
+        steps = max(1, int(duration_ms / (self.dt * 1000)))
         self._simulator.run_steps(steps)
 
-        # Store in index
+        # Store the SCALED vector in index (matches what network learned)
         self._memory_index[context_id] = MemoryEntry(
             context_id=context_id,
-            sparse_vector=sparse_vector.astype(np.float32).copy(),
+            sparse_vector=scaled_vector.copy(),
             importance=importance,
             stored_at=self._simulator.time,
         )
@@ -234,7 +243,7 @@ class BiCameralMemory:
         query_vector: NDArray[np.floating],
         threshold: float = 0.7,
         max_results: int = 5,
-        duration_ms: int = 20,
+        duration_ms: int = DEFAULT_RECALL_DURATION_MS,
     ) -> list[RecallResult]:
         """
         Recall memories via pattern completion.
@@ -266,7 +275,7 @@ class BiCameralMemory:
         # Inject query
         self._input_value = query_vector.astype(np.float32).copy()
 
-        steps = int(duration_ms / (self.dt * 1000))
+        steps = max(1, int(duration_ms / (self.dt * 1000)))
         self._simulator.run_steps(steps)
 
         # Re-enable learning (0.0 = normal learning)
@@ -292,7 +301,7 @@ class BiCameralMemory:
 
     def consolidate(
         self,
-        duration_ms: int = 1000,
+        duration_ms: int = DEFAULT_CONSOLIDATE_DURATION_MS,
         prune_weak: bool = False,
         prune_threshold: float = 0.1,
     ) -> int:
@@ -312,7 +321,7 @@ class BiCameralMemory:
 
         # Run with no input (let network settle)
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
-        steps = int(duration_ms / (self.dt * 1000))
+        steps = max(1, int(duration_ms / (self.dt * 1000)))
         self._simulator.run_steps(steps)
 
         pruned_count = 0
@@ -362,8 +371,7 @@ class BiCameralMemory:
         total_spikes = int(np.sum(spike_data > 0))
 
         # Each spike triggers synaptic operations proportional to connectivity
-        # Assume ~10% sparse connectivity
-        return int(total_spikes * self.dimensions * 0.1)
+        return int(total_spikes * self.dimensions * CONNECTIVITY_FACTOR)
 
     def get_memory_count(self) -> int:
         """Return number of stored memories."""
@@ -377,9 +385,10 @@ class BiCameralMemory:
         self, vec1: NDArray[np.floating], vec2: NDArray[np.floating]
     ) -> float:
         """Compute cosine similarity between vectors."""
-        norm1 = np.linalg.norm(vec1)
-        norm2 = np.linalg.norm(vec2)
-        if norm1 == 0 or norm2 == 0:
+        eps = SIMILARITY_EPS
+        norm1 = float(np.linalg.norm(vec1))
+        norm2 = float(np.linalg.norm(vec2))
+        if norm1 < eps or norm2 < eps:
             return 0.0
         return float(np.dot(vec1, vec2) / (norm1 * norm2))
 
@@ -391,6 +400,14 @@ class BiCameralMemory:
         self._memory_index.clear()
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
         self._learning_gate_value = 0.0  # Reset to normal learning
+
+    def __del__(self) -> None:
+        """Clean up simulator resources on garbage collection."""
+        if hasattr(self, "_simulator") and self._simulator is not None:
+            try:
+                self._simulator.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
 
     def __enter__(self) -> BiCameralMemory:
         """Context manager entry."""
