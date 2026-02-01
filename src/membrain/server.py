@@ -13,10 +13,10 @@ Provides Remember, Recall, Consolidate, and Ping operations.
 from __future__ import annotations
 
 import hmac
+import json
 import logging
 import os
 import re
-import secrets
 import signal
 import sys
 import threading
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 def validate_token(token: str) -> tuple[bool, str | None]:
     """
     Validate token strength.
-    
+
     Returns (is_valid, error_message).
     """
     if not token:
@@ -505,8 +505,6 @@ def load_tokens_from_env() -> dict[str, str] | None:
     
     Returns dict of tokens or None if not configured.
     """
-    import json
-    
     # Try multi-client config first
     tokens_json = os.environ.get("MEMBRAIN_AUTH_TOKENS")
     if tokens_json:
