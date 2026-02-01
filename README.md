@@ -10,6 +10,8 @@ A Spiking Neural Network (SNN) based memory system that provides associative rec
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Status](https://img.shields.io/badge/status-PoC-orange)](https://github.com/tfatykhov/membrain)
 
+[![CI](https://github.com/tfatykhov/membrain/actions/workflows/ci.yml/badge.svg)](https://github.com/tfatykhov/membrain/actions/workflows/ci.yml)
+
 ## Why Membrain?
 
 > *"All competitors treat memory as Information Retrieval. We treat memory as State Reconstruction."*
