@@ -1,27 +1,63 @@
-# Feature Specifications
+# Membrain Feature Specifications
 
-This folder contains detailed feature specifications for the Membrain Neuromorphic Memory Bridge.
+This folder contains detailed specifications for all Membrain features.
 
-## Features Overview
+## Feature Status
 
-| Feature | File | Status | Priority |
-|---------|------|--------|----------|
-| A2A Interface (gRPC) | [01-grpc-a2a-interface.md](01-grpc-a2a-interface.md) | 🔜 Next Up | P0 |
-| FlyHash Encoder | [02-flyhash-encoder.md](02-flyhash-encoder.md) | ✅ Complete | P0 |
-| Neuromorphic Core | [03-neuromorphic-core.md](03-neuromorphic-core.md) | ✅ Complete | P0 |
-| Lava Process Integration | [04-lava-process-integration.md](04-lava-process-integration.md) | Not Started | P1 |
+### Completed (in codebase)
 
-## Implementation Order
+| # | Feature | Status |
+|---|---------|--------|
+| 01 | [gRPC A2A Interface](./01-grpc-a2a-interface.md) | ✅ Done (PR #5) |
+| 02 | [FlyHash Encoder](./02-flyhash-encoder.md) | ✅ Done |
+| 03 | [Neuromorphic Core](./03-neuromorphic-core.md) | ✅ Done |
 
-1. **Feature 2: FlyHash Encoder** - ✅ Complete (PR #2)
-2. **Feature 3: Neuromorphic Core** - ✅ Complete (PR #3, #4)
-3. **Feature 1: A2A Interface** - 🔜 Next (server implementation)
-4. **Feature 4: Lava Integration** - Future-proofing wrapper
+### P0 — Product Loop
 
-## Success Metrics
+| # | Feature | Status | Priority |
+|---|---------|--------|----------|
+| 04 | [Lava Process Integration](./04-lava-process-integration.md) | 🔴 Not Started | P0 |
+| 05 | [Config System](./05-config-system.md) | 🟡 Partial | P0 |
+| 06 | [FlyHash Optimization](./06-flyhash-optimization.md) | 🔴 Not Started | P0 |
+| 07 | [Healthcheck](./07-healthcheck.md) | 🟡 Partial | P0 |
+| 08 | [Docker Compose](./08-docker-compose.md) | 🟡 Needs Verify | P0 |
+| 09 | [Benchmarks](./09-benchmarks.md) | 🔴 Not Started | P0 |
 
-All features must contribute to these PoC success metrics:
+### P1 — Synthetic Hippocampus
 
-- **SynOp Count:** Linear scaling with active neurons
-- **Sparsity Rate:** >90% (less than 10% neurons fire)
-- **Pattern Completion:** 100% accuracy at 20% noise
+| # | Feature | Status | Priority |
+|---|---------|--------|----------|
+| 10 | [Attractor Dynamics](./10-attractor-dynamics.md) | 🔴 Not Started | P1 |
+| 11 | [Temporal Binding](./11-temporal-binding.md) | 🔴 Not Started | P1 |
+| 12 | [Persistence](./12-persistence.md) | 🔴 Not Started | P1 |
+
+## Recommended Execution Order
+
+### Phase 1: Product Loop
+1. **05-config-system** — Foundational (config dataclass)
+2. **06-flyhash-optimization** — Memory reduction (8x)
+3. **07-healthcheck** — gRPC health check
+4. **08-docker-compose** — One-command run
+5. **09-benchmarks** — Prove value vs baselines
+
+### Phase 2: Synthetic Hippocampus
+6. **10-attractor-dynamics** — Key differentiator
+7. **11-temporal-binding** — Sequence memory
+8. **12-persistence** — Production readiness
+
+## Issues Found
+
+1. **FlyHash uses ~245 MB** for default config → fix with int8
+2. **Config scattered** → centralize in dataclass
+3. **Healthcheck is socket-only** → needs gRPC validation
+4. **No baseline comparisons** → can't prove SNN advantage
+5. **Recall isn't pattern completion** → needs attractor dynamics
+
+## Definition of Done (All Features)
+
+- [ ] Tests added/updated
+- [ ] README updated if user-facing
+- [ ] Determinism preserved (seeded)
+- [ ] Logging for operations
+- [ ] Code review with `gemini-3-pro-high`
+- [ ] CI green before merge
