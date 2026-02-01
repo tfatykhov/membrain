@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="docs/logo.png" alt="Membrain Logo" width="200">
+  <img src="docs/logo-v2.png" alt="Membrain - Neuromorphic Bio-Memory System" width="600">
 </p>
-
-# Membrain
 
 **Neuromorphic Memory Bridge for LLM Agents**
 
