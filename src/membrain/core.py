@@ -106,8 +106,9 @@ class BiCameralMemory:
             self.dimensions, dtype=np.float32
         )
 
-        # Learning gate value (1.0 = learn, 0.0 = recall-only)
-        self._learning_gate_value: float = 1.0
+        # Learning gate value: 0.0 = normal learning, -1.0 = disable learning
+        # (Voja modulation: output is multiplier-1, so 0=learn, -1=no learn)
+        self._learning_gate_value: float = 0.0
 
         # Build the Nengo network
         self._build_network()
@@ -126,7 +127,7 @@ class BiCameralMemory:
             )
 
             # 2. Learning Gate Node: Controls whether learning is active
-            # 1.0 = learning enabled, 0.0 = learning disabled (recall-only)
+            # Voja modulation: 0.0 = normal learning, -1.0 = disable learning
             self.learning_gate = nengo.Node(
                 output=lambda t: self._learning_gate_value,
                 size_out=1,
@@ -204,8 +205,8 @@ class BiCameralMemory:
         # Set input and run simulation with learning
         self._input_value = sparse_vector.astype(np.float32).copy()
 
-        # Ensure learning gate is enabled for remember
-        self._learning_gate_value = 1.0
+        # Ensure learning gate is enabled for remember (0.0 = normal learning)
+        self._learning_gate_value = 0.0
 
         # Modulate learning rate by importance
         # Note: In a full implementation, we'd modify the learning rule's rate
@@ -259,8 +260,8 @@ class BiCameralMemory:
                 f"Expected shape ({self.dimensions},), got {query_vector.shape}"
             )
 
-        # Disable learning during recall via gate
-        self._learning_gate_value = 0.0
+        # Disable learning during recall via gate (-1.0 = no learning)
+        self._learning_gate_value = -1.0
 
         # Inject query
         self._input_value = query_vector.astype(np.float32).copy()
@@ -268,8 +269,8 @@ class BiCameralMemory:
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
 
-        # Re-enable learning
-        self._learning_gate_value = 1.0
+        # Re-enable learning (0.0 = normal learning)
+        self._learning_gate_value = 0.0
 
         # Read output probe (attractor state)
         output_data = self._simulator.data[self.output_probe]
@@ -389,7 +390,7 @@ class BiCameralMemory:
             self._simulator = None
         self._memory_index.clear()
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
-        self._learning_gate_value = 1.0
+        self._learning_gate_value = 0.0  # Reset to normal learning
 
     def __enter__(self) -> BiCameralMemory:
         """Context manager entry."""

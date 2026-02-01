@@ -310,8 +310,8 @@ class TestLearningGate:
         assert memory.learning_gate is not None
 
     def test_learning_gate_default_enabled(self, memory: BiCameralMemory) -> None:
-        """Learning gate should default to 1.0 (enabled)."""
-        assert memory._learning_gate_value == 1.0
+        """Learning gate should default to 0.0 (normal learning)."""
+        assert memory._learning_gate_value == 0.0
 
     def test_recall_disables_learning(self, memory: BiCameralMemory) -> None:
         """Recall should temporarily disable learning gate."""
@@ -320,29 +320,29 @@ class TestLearningGate:
         vector[:25] = 1.0
         memory.remember("gate-test", vector)
 
-        # Gate should be enabled before recall
-        assert memory._learning_gate_value == 1.0
+        # Gate should be enabled (0.0) before recall
+        assert memory._learning_gate_value == 0.0
 
         # Recall
         memory.recall(vector, threshold=0.1)
 
-        # Gate should be re-enabled after recall
-        assert memory._learning_gate_value == 1.0
+        # Gate should be re-enabled (0.0) after recall
+        assert memory._learning_gate_value == 0.0
 
     def test_reset_restores_gate(self, memory: BiCameralMemory) -> None:
         """Reset should restore learning gate to enabled."""
-        memory._learning_gate_value = 0.0
+        memory._learning_gate_value = -1.0
         memory.reset()
-        assert memory._learning_gate_value == 1.0
+        assert memory._learning_gate_value == 0.0
 
     def test_remember_enables_gate(self, memory: BiCameralMemory) -> None:
         """Remember should enable learning gate even if previously disabled."""
         # Disable gate manually
-        memory._learning_gate_value = 0.0
+        memory._learning_gate_value = -1.0
 
         # Remember should re-enable gate
         vector = np.zeros(500, dtype=np.float32)
         vector[:25] = 1.0
         memory.remember("gate-enable-test", vector)
 
-        assert memory._learning_gate_value == 1.0
+        assert memory._learning_gate_value == 0.0
