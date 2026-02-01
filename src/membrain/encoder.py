@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
-from typing import Optional
 
 
 class FlyHash:
@@ -44,7 +43,7 @@ class FlyHash:
         expansion_ratio: float = 13.0,
         active_bits: int = 50,
         connection_probability: float = 0.1,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> None:
         """
         Initialize FlyHash encoder.
