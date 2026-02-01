@@ -149,9 +149,7 @@ class MembrainConfig:
         # Validate auth tokens (if any are provided)
         for token in self.auth_tokens:
             if len(token) < 16:
-                raise ValueError(
-                    f"Auth token too short (min 16 chars): {token[:4]}..."
-                )
+                raise ValueError("Auth token too short (min 16 chars)")
 
     def log_config(self, logger: logging.Logger) -> None:
         """Log resolved configuration (masking sensitive values)."""
