@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo-v2.png" alt="Membrain - Neuromorphic Bio-Memory System" width="600">
+  <img src="docs/media/logo-v2.png" alt="Membrain - Neuromorphic Bio-Memory System" width="600">
 </p>
 
 **Neuromorphic Memory Bridge for LLM Agents**
@@ -29,7 +29,7 @@ Traditional RAG (Retrieval Augmented Generation) uses vector databases for stati
 
 ## Architecture
 
-![Membrain Architecture](docs/architecture.png)
+![Membrain Architecture](docs/media/architecture.png)
 
 ## Key Concepts
 
