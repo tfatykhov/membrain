@@ -13,9 +13,7 @@ Provides Remember, Recall, Consolidate, and Ping operations.
 from __future__ import annotations
 
 import hmac
-import json
 import logging
-import os
 import re
 import signal
 import sys
@@ -26,19 +24,13 @@ from typing import Any, Callable
 import grpc
 import numpy as np
 
+from membrain.config import MembrainConfig
 from membrain.core import BiCameralMemory
 from membrain.encoder import FlyHash
 from membrain.proto import memory_a2a_pb2, memory_a2a_pb2_grpc
 
-# Configuration from environment
-DEFAULT_PORT = 50051
-DEFAULT_MAX_WORKERS = 10
-DEFAULT_INPUT_DIM = 1536  # OpenAI Ada-002 embedding dimension
-DEFAULT_EXPANSION_RATIO = 13.0  # FlyHash expansion (output = input * ratio)
-DEFAULT_N_NEURONS = 1000
-
 # Security constants
-MIN_TOKEN_LENGTH = 32  # Minimum token length for security
+MIN_TOKEN_LENGTH = 16  # Minimum token length for security
 
 # Validation constants
 MIN_THRESHOLD = 0.0
@@ -142,34 +134,47 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
 
     def __init__(
         self,
-        input_dim: int = DEFAULT_INPUT_DIM,
-        expansion_ratio: float = DEFAULT_EXPANSION_RATIO,
-        n_neurons: int = DEFAULT_N_NEURONS,
+        config: MembrainConfig | None = None,
+        *,
+        input_dim: int | None = None,
+        expansion_ratio: float | None = None,
+        n_neurons: int | None = None,
     ) -> None:
         """
         Initialize the memory servicer.
 
         Args:
-            input_dim: Dimension of input embeddings (e.g., 1536 for Ada-002).
-            expansion_ratio: FlyHash expansion ratio (output = input * ratio).
-            n_neurons: Number of neurons in BiCameralMemory.
+            config: MembrainConfig instance (preferred).
+            input_dim: Dimension of input embeddings (legacy, use config).
+            expansion_ratio: FlyHash expansion ratio (legacy, use config).
+            n_neurons: Number of neurons (legacy, use config).
         """
-        self.input_dim = input_dim
-        self.expansion_ratio = expansion_ratio
+        # Use config if provided, otherwise fall back to legacy args
+        if config is None:
+            config = MembrainConfig(
+                input_dim=input_dim or 1536,
+                expansion_ratio=expansion_ratio or 13.0,
+                n_neurons=n_neurons or 1000,
+            )
+
+        self.config = config
+        self.input_dim = config.input_dim
+        self.expansion_ratio = config.expansion_ratio
 
         # Thread safety lock for encoder and memory operations
         self._lock = threading.RLock()
 
         # Initialize FlyHash encoder
         self.encoder = FlyHash(
-            input_dim=input_dim,
-            expansion_ratio=expansion_ratio,
+            input_dim=config.input_dim,
+            expansion_ratio=config.expansion_ratio,
+            seed=config.seed,
         )
         self.output_dim = self.encoder.output_dim
 
         # Initialize BiCameralMemory
         self.memory = BiCameralMemory(
-            n_neurons=n_neurons,
+            n_neurons=config.n_neurons,
             dimensions=self.output_dim,
         )
 
@@ -178,8 +183,9 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
 
         logger.info(
             "MemoryUnitServicer initialized: "
-            "input_dim=%d, output_dim=%d, n_neurons=%d",
-            input_dim, self.output_dim, n_neurons
+            "input_dim=%d, output_dim=%d, n_neurons=%d, seed=%s",
+            config.input_dim, self.output_dim, config.n_neurons,
+            config.seed or "random"
         )
 
     def _validate_context_id(self, context_id: str) -> str | None:
@@ -406,33 +412,50 @@ class MembrainServer:
 
     def __init__(
         self,
-        port: int = DEFAULT_PORT,
-        max_workers: int = DEFAULT_MAX_WORKERS,
-        input_dim: int = DEFAULT_INPUT_DIM,
-        expansion_ratio: float = DEFAULT_EXPANSION_RATIO,
-        n_neurons: int = DEFAULT_N_NEURONS,
+        config: MembrainConfig | None = None,
+        *,
+        port: int | None = None,
+        max_workers: int | None = None,
+        input_dim: int | None = None,
+        expansion_ratio: float | None = None,
+        n_neurons: int | None = None,
         auth_tokens: dict[str, str] | str | None = None,
     ) -> None:
         """
         Initialize the server.
 
         Args:
-            port: Port to listen on.
-            max_workers: Maximum thread pool workers.
-            input_dim: Dimension of input embeddings.
-            expansion_ratio: FlyHash expansion ratio.
-            n_neurons: Number of neurons in BiCameralMemory.
-            auth_tokens: Dict of client_id->token, or single token string.
+            config: MembrainConfig instance (preferred).
+            port: Port to listen on (legacy, use config).
+            max_workers: Maximum thread pool workers (legacy, use config).
+            input_dim: Dimension of input embeddings (legacy, use config).
+            expansion_ratio: FlyHash expansion ratio (legacy, use config).
+            n_neurons: Number of neurons (legacy, use config).
+            auth_tokens: Dict of client_id->token (legacy, use config).
         """
-        self.port = port
-        self.max_workers = max_workers
-        self.auth_tokens = auth_tokens
+        # Use config if provided, otherwise build from legacy args
+        if config is None:
+            tokens = []
+            if auth_tokens:
+                if isinstance(auth_tokens, str):
+                    tokens = [auth_tokens]
+                else:
+                    tokens = list(auth_tokens.values())
 
-        self.servicer = MemoryUnitServicer(
-            input_dim=input_dim,
-            expansion_ratio=expansion_ratio,
-            n_neurons=n_neurons,
-        )
+            config = MembrainConfig(
+                port=port or 50051,
+                max_workers=max_workers or 10,
+                input_dim=input_dim or 1536,
+                expansion_ratio=expansion_ratio or 13.0,
+                n_neurons=n_neurons or 1000,
+                auth_tokens=tokens,
+            )
+
+        self.config = config
+        self.port = config.port
+        self.max_workers = config.max_workers
+
+        self.servicer = MemoryUnitServicer(config=config)
 
         self.server: grpc.Server | None = None
         self._shutdown_requested = False
@@ -441,22 +464,20 @@ class MembrainServer:
         """Start the gRPC server."""
         # Build interceptors list
         interceptors = []
-        if self.auth_tokens:
+        if self.config.auth_tokens:
             # Validate all tokens
-            tokens = self.auth_tokens
-            if isinstance(tokens, str):
-                tokens = {"default": tokens}
-
-            for client_id, token in tokens.items():
+            for token in self.config.auth_tokens:
                 is_valid, error = validate_token(token)
                 if not is_valid:
-                    raise ValueError(f"Invalid token for client '{client_id}': {error}")
+                    raise ValueError(f"Invalid token: {error}")
 
+            # Build token dict for interceptor
+            tokens = {f"client_{i}": t for i, t in enumerate(self.config.auth_tokens)}
             interceptors.append(TokenAuthInterceptor(tokens))
             # Log client count, NOT the tokens
             logger.info(
                 "Token authentication enabled for %d client(s)",
-                len(tokens)
+                len(self.config.auth_tokens)
             )
 
         self.server = grpc.server(
@@ -495,94 +516,41 @@ class MembrainServer:
         logger.info("Membrain server stopped")
 
 
-def load_tokens_from_env() -> dict[str, str] | None:
+def serve(config: MembrainConfig | None = None) -> None:
     """
-    Load authentication tokens from environment.
+    Start the gRPC server with configuration.
 
-    Supports:
-    - MEMBRAIN_AUTH_TOKEN: Single token for backward compatibility
-    - MEMBRAIN_AUTH_TOKENS: JSON dict of client_id->token
+    Args:
+        config: MembrainConfig instance. If None, loads from environment.
 
-    Returns dict of tokens or None if not configured.
-    """
-    # Try multi-client config first
-    tokens_json = os.environ.get("MEMBRAIN_AUTH_TOKENS")
-    if tokens_json:
-        try:
-            tokens = json.loads(tokens_json)
-            if isinstance(tokens, dict) and all(
-                isinstance(k, str) and isinstance(v, str)
-                for k, v in tokens.items()
-            ):
-                return tokens
-            else:
-                logger.error("MEMBRAIN_AUTH_TOKENS must be a JSON object of string->string")
-                return None
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse MEMBRAIN_AUTH_TOKENS: %s", e)
-            return None
-
-    # Fall back to single token
-    single_token = os.environ.get("MEMBRAIN_AUTH_TOKEN")
-    if single_token:
-        return {"default": single_token}
-
-    return None
-
-
-def serve(
-    port: int | None = None,
-    max_workers: int | None = None,
-    input_dim: int | None = None,
-    expansion_ratio: float | None = None,
-    n_neurons: int | None = None,
-    auth_tokens: dict[str, str] | str | None = None,
-) -> None:
-    """
-    Start the gRPC server with configuration from environment.
-
-    Environment variables:
+    Environment variables (when config is None):
         MEMBRAIN_PORT: Server port (default: 50051)
         MEMBRAIN_MAX_WORKERS: Thread pool size (default: 10)
         MEMBRAIN_INPUT_DIM: Input embedding dimension (default: 1536)
         MEMBRAIN_EXPANSION_RATIO: FlyHash expansion ratio (default: 13.0)
         MEMBRAIN_N_NEURONS: Number of SNN neurons (default: 1000)
-        MEMBRAIN_AUTH_TOKEN: Single bearer token (backward compatible)
-        MEMBRAIN_AUTH_TOKENS: JSON dict of client_id->token for multi-client
+        MEMBRAIN_SEED: Random seed for reproducibility
+        MEMBRAIN_AUTH_TOKEN: Single bearer token
+        MEMBRAIN_AUTH_TOKENS: Comma-separated tokens for multi-client
     """
-    # Read configuration from environment with defaults
-    port = port or int(os.environ.get("MEMBRAIN_PORT", DEFAULT_PORT))
-    max_workers = max_workers or int(
-        os.environ.get("MEMBRAIN_MAX_WORKERS", DEFAULT_MAX_WORKERS)
-    )
-    input_dim = input_dim or int(
-        os.environ.get("MEMBRAIN_INPUT_DIM", DEFAULT_INPUT_DIM)
-    )
-    expansion_ratio = expansion_ratio or float(
-        os.environ.get("MEMBRAIN_EXPANSION_RATIO", DEFAULT_EXPANSION_RATIO)
-    )
-    n_neurons = n_neurons or int(
-        os.environ.get("MEMBRAIN_N_NEURONS", DEFAULT_N_NEURONS)
-    )
+    # Load config from environment if not provided
+    if config is None:
+        config = MembrainConfig.from_env()
 
-    # Load tokens from args or environment
-    if auth_tokens is None:
-        auth_tokens = load_tokens_from_env()
+    # Validate configuration
+    config.validate()
 
-    if not auth_tokens:
+    # Log resolved config
+    config.log_config(logger)
+
+    if not config.auth_tokens:
         logger.warning(
-            "No authentication tokens configured - server running without authentication! "
-            "Set MEMBRAIN_AUTH_TOKEN or MEMBRAIN_AUTH_TOKENS for security."
+            "No authentication tokens configured - server running without "
+            "authentication! Set MEMBRAIN_AUTH_TOKEN or MEMBRAIN_AUTH_TOKENS "
+            "for security."
         )
 
-    server = MembrainServer(
-        port=port,
-        max_workers=max_workers,
-        input_dim=input_dim,
-        expansion_ratio=expansion_ratio,
-        n_neurons=n_neurons,
-        auth_tokens=auth_tokens,
-    )
+    server = MembrainServer(config=config)
 
     # Register signal handlers for graceful shutdown
     def handle_signal(signum: int, frame: object) -> None:

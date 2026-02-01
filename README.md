@@ -94,6 +94,60 @@ result = memory.Recall(memory_a2a_pb2.QueryPacket(
 print(f"Recalled: {result.context_ids}")
 ```
 
+## Configuration
+
+Membrain is configured via environment variables. All have sensible defaults.
+
+### Environment Variables
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MEMBRAIN_PORT` | int | 50051 | gRPC server port |
+| `MEMBRAIN_MAX_WORKERS` | int | 10 | Thread pool size |
+| `MEMBRAIN_INPUT_DIM` | int | 1536 | Input embedding dimension |
+| `MEMBRAIN_EXPANSION_RATIO` | float | 13.0 | FlyHash expansion ratio |
+| `MEMBRAIN_ACTIVE_BITS` | int | auto | Number of active bits in WTA |
+| `MEMBRAIN_N_NEURONS` | int | 1000 | SNN neuron count |
+| `MEMBRAIN_DT` | float | 0.001 | Simulation timestep (seconds) |
+| `MEMBRAIN_SYNAPSE` | float | 0.01 | Synapse time constant (seconds) |
+| `MEMBRAIN_SEED` | int | None | Random seed for reproducibility |
+| `MEMBRAIN_AUTH_TOKEN` | string | None | Single bearer token |
+| `MEMBRAIN_AUTH_TOKENS` | string | None | Comma-separated tokens for multi-client |
+
+### Example Docker Configuration
+
+```bash
+docker run -d \
+  -e MEMBRAIN_PORT=50051 \
+  -e MEMBRAIN_INPUT_DIM=768 \
+  -e MEMBRAIN_AUTH_TOKEN=your-secret-token-here \
+  -p 50051:50051 \
+  membrain:latest
+```
+
+### Programmatic Configuration
+
+```python
+from membrain.config import MembrainConfig
+from membrain.server import MembrainServer
+
+# Load from environment
+config = MembrainConfig.from_env()
+
+# Or create directly
+config = MembrainConfig(
+    port=50051,
+    input_dim=768,  # For smaller embeddings
+    n_neurons=500,
+    seed=42,        # Reproducible
+)
+
+# Validate and start
+config.validate()
+server = MembrainServer(config=config)
+server.start()
+```
+
 ## API Reference
 
 ### gRPC Methods
