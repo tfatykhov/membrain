@@ -106,8 +106,8 @@ class BiCameralMemory:
             self.dimensions, dtype=np.float32
         )
 
-        # Learning enabled flag
-        self._learning_enabled: bool = True
+        # Learning gate value (1.0 = learn, 0.0 = recall-only)
+        self._learning_gate_value: float = 1.0
 
         # Build the Nengo network
         self._build_network()
@@ -125,7 +125,15 @@ class BiCameralMemory:
                 label="input",
             )
 
-            # 2. Memory Ensemble: The core storage
+            # 2. Learning Gate Node: Controls whether learning is active
+            # 1.0 = learning enabled, 0.0 = learning disabled (recall-only)
+            self.learning_gate = nengo.Node(
+                output=lambda t: self._learning_gate_value,
+                size_out=1,
+                label="learning_gate",
+            )
+
+            # 3. Memory Ensemble: The core storage
             # Use standard LIF neurons (Loihi-compatible neurons require nengo-loihi)
             self.memory = nengo.Ensemble(
                 n_neurons=self.n_neurons,
@@ -134,7 +142,7 @@ class BiCameralMemory:
                 label="memory_ensemble",
             )
 
-            # 3. Learning Connection (Plasticity)
+            # 4. Learning Connection (Plasticity)
             # Voja learning rule for unsupervised association
             self.learning_conn = nengo.Connection(
                 self.input_node,
@@ -143,10 +151,18 @@ class BiCameralMemory:
                 synapse=self.synapse,
             )
 
-            # 4. Output Probe for reading attractor states
+            # 5. Gate connection: modulates the learning rule
+            # When gate=0, learning is effectively disabled
+            nengo.Connection(
+                self.learning_gate,
+                self.learning_conn.learning_rule,
+                synapse=None,
+            )
+
+            # 6. Output Probe for reading attractor states
             self.output_probe = nengo.Probe(self.memory, synapse=self.synapse)
 
-            # 5. Spike probe for sparsity monitoring
+            # 7. Spike probe for sparsity monitoring
             self.spike_probe = nengo.Probe(self.memory.neurons, "output")
 
     def _ensure_simulator(self) -> None:
@@ -241,14 +257,17 @@ class BiCameralMemory:
                 f"Expected shape ({self.dimensions},), got {query_vector.shape}"
             )
 
-        # Note: Voja learning remains active but short duration minimizes drift.
-        # For true read-only recall, would need network rebuild or separate model.
+        # Disable learning during recall via gate
+        self._learning_gate_value = 0.0
 
         # Inject query
         self._input_value = query_vector.astype(np.float32).copy()
 
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
+
+        # Re-enable learning
+        self._learning_gate_value = 1.0
 
         # Read output probe (attractor state)
         output_data = self._simulator.data[self.output_probe]
@@ -368,6 +387,7 @@ class BiCameralMemory:
             self._simulator = None
         self._memory_index.clear()
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
+        self._learning_gate_value = 1.0
 
     def __enter__(self) -> BiCameralMemory:
         """Context manager entry."""
