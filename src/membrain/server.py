@@ -452,7 +452,7 @@ class MembrainServer:
                 if not is_valid:
                     raise ValueError(f"Invalid token for client '{client_id}': {error}")
 
-            interceptors.append(TokenAuthInterceptor(self.auth_tokens))
+            interceptors.append(TokenAuthInterceptor(tokens))
             # Log client count, NOT the tokens
             logger.info(
                 "Token authentication enabled for %d client(s)",
