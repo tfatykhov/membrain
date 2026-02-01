@@ -28,7 +28,18 @@ def __getattr__(name: str) -> Any:
         from membrain.core import RecallResult
 
         return RecallResult
+    if name == "MembrainConfig":
+        from membrain.config import MembrainConfig
+
+        return MembrainConfig
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["FlyHash", "BiCameralMemory", "MemoryEntry", "RecallResult", "__version__"]
+__all__ = [
+    "FlyHash",
+    "BiCameralMemory",
+    "MemoryEntry",
+    "RecallResult",
+    "MembrainConfig",
+    "__version__",
+]

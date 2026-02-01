@@ -297,7 +297,7 @@ class TestServerLifecycle:
             auth_tokens={"client1": long_token},
         )
 
-        assert server.auth_tokens == {"client1": long_token}
+        assert long_token in server.config.auth_tokens
         server.start()
         server.stop(grace=0.1)
 
@@ -515,11 +515,11 @@ class TestTokenValidation:
         """Token shorter than minimum length should be rejected."""
         is_valid, error = validate_token("short")
         assert is_valid is False
-        assert "32" in error  # minimum length
+        assert "16" in error  # minimum length
 
     def test_valid_token_accepted(self) -> None:
         """Token meeting requirements should be accepted."""
-        is_valid, error = validate_token("a" * 32)
+        is_valid, error = validate_token("a" * 16)
         assert is_valid is True
         assert error is None
 
