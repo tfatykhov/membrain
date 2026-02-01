@@ -17,7 +17,7 @@ This folder contains detailed specifications for all Membrain features.
 | # | Feature | Status | Priority |
 |---|---------|--------|----------|
 | 04 | [Lava Process Integration](./04-lava-process-integration.md) | 🔴 Not Started | P0 |
-| 05 | [Config System](./05-config-system.md) | 🟡 Partial | P0 |
+| 05 | [Config System](./05-config-system.md) | ✅ Done | P0 |
 | 06 | [FlyHash Optimization](./06-flyhash-optimization.md) | 🔴 Not Started | P0 |
 | 07 | [Healthcheck](./07-healthcheck.md) | 🟡 Partial | P0 |
 | 08 | [Docker Compose](./08-docker-compose.md) | 🟡 Needs Verify | P0 |

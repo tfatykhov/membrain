@@ -168,6 +168,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
         self.encoder = FlyHash(
             input_dim=config.input_dim,
             expansion_ratio=config.expansion_ratio,
+            active_bits=config.active_bits if config.active_bits else 50,
             seed=config.seed,
         )
         self.output_dim = self.encoder.output_dim
@@ -176,6 +177,8 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
         self.memory = BiCameralMemory(
             n_neurons=config.n_neurons,
             dimensions=self.output_dim,
+            synapse=config.synapse,
+            dt=config.dt,
         )
 
         # Build the simulator
