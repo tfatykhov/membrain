@@ -12,9 +12,11 @@ Provides Remember, Recall, Consolidate, and Ping operations.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import re
+import secrets
 import signal
 import sys
 import threading
@@ -35,6 +37,9 @@ DEFAULT_INPUT_DIM = 1536  # OpenAI Ada-002 embedding dimension
 DEFAULT_EXPANSION_RATIO = 13.0  # FlyHash expansion (output = input * ratio)
 DEFAULT_N_NEURONS = 1000
 
+# Security constants
+MIN_TOKEN_LENGTH = 32  # Minimum token length for security
+
 # Validation constants
 MIN_THRESHOLD = 0.0
 MAX_THRESHOLD = 1.0
@@ -49,22 +54,46 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def validate_token(token: str) -> tuple[bool, str | None]:
+    """
+    Validate token strength.
+    
+    Returns (is_valid, error_message).
+    """
+    if not token:
+        return False, "Token cannot be empty"
+    if len(token) < MIN_TOKEN_LENGTH:
+        return False, f"Token must be at least {MIN_TOKEN_LENGTH} characters"
+    return True, None
+
+
 class TokenAuthInterceptor(grpc.ServerInterceptor):
     """
     gRPC interceptor for bearer token authentication.
     
-    Validates the 'authorization' metadata header against configured token.
+    Validates the 'authorization' metadata header against configured tokens.
+    Uses timing-safe comparison to prevent timing attacks.
+    Supports multiple client tokens.
     """
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, tokens: dict[str, str]) -> None:
         """
         Initialize the auth interceptor.
 
         Args:
-            token: The expected bearer token for authentication.
+            tokens: Dict mapping client_id -> token for authentication.
+                   Can also pass a single token string for backward compatibility.
         """
-        self._token = token
-        self._auth_header = f"bearer {token}"
+        # Support both single token (string) and multi-client (dict)
+        if isinstance(tokens, str):
+            tokens = {"default": tokens}
+        
+        self._tokens = tokens
+        # Pre-compute lowercase bearer prefixes for each token
+        self._valid_headers: dict[str, bytes] = {}
+        for client_id, token in tokens.items():
+            header = f"bearer {token}".lower().encode("utf-8")
+            self._valid_headers[client_id] = header
 
     def intercept_service(
         self,
@@ -75,8 +104,18 @@ class TokenAuthInterceptor(grpc.ServerInterceptor):
         # Extract authorization header
         metadata = dict(handler_call_details.invocation_metadata)
         auth_value = metadata.get("authorization", "")
+        auth_bytes = auth_value.lower().encode("utf-8")
 
-        if auth_value.lower() != self._auth_header:
+        # Check against all valid tokens using timing-safe comparison
+        authenticated = False
+        for client_id, valid_header in self._valid_headers.items():
+            if len(auth_bytes) == len(valid_header):
+                if hmac.compare_digest(auth_bytes, valid_header):
+                    authenticated = True
+                    # Could log client_id here for audit, but NOT the token
+                    break
+
+        if not authenticated:
             return grpc.unary_unary_rpc_method_handler(
                 lambda req, ctx: self._deny(ctx)
             )
@@ -98,7 +137,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
     - FlyHash encoder for sparse distributed representations
     - BiCameralMemory for spiking neural network storage
     
-    Thread-safe: uses locks for memory operations.
+    Thread-safe: uses locks for all encoder and memory operations.
     """
 
     def __init__(
@@ -118,7 +157,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
         self.input_dim = input_dim
         self.expansion_ratio = expansion_ratio
 
-        # Thread safety lock for memory operations
+        # Thread safety lock for encoder and memory operations
         self._lock = threading.RLock()
 
         # Initialize FlyHash encoder
@@ -138,8 +177,9 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
         self.memory._ensure_simulator()
 
         logger.info(
-            f"MemoryUnitServicer initialized: "
-            f"input_dim={input_dim}, output_dim={self.output_dim}, n_neurons={n_neurons}"
+            "MemoryUnitServicer initialized: "
+            "input_dim=%d, output_dim=%d, n_neurons=%d",
+            input_dim, self.output_dim, n_neurons
         )
 
     def _validate_context_id(self, context_id: str) -> str | None:
@@ -213,25 +253,26 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
                 context.set_details(msg)
                 return memory_a2a_pb2.Ack(success=False, message=msg)
 
-            # Encode via FlyHash
-            sparse_vector = self.encoder.encode(vector)
-
-            # Store in memory (thread-safe)
+            # Thread-safe encode and store
             with self._lock:
+                # Encode via FlyHash (inside lock for thread safety)
+                sparse_vector = self.encoder.encode(vector)
+                
+                # Store in memory
                 self.memory.remember(
                     context_id=request.context_id,
                     sparse_vector=sparse_vector,
                     importance=importance,
                 )
 
-            logger.info(f"Stored memory: {request.context_id}")
+            logger.info("Stored memory: %s", request.context_id)
             return memory_a2a_pb2.Ack(
                 success=True,
                 message=f"Memory stored: {request.context_id}",
             )
 
-        except Exception as e:
-            logger.exception(f"Remember failed: {e}")
+        except Exception:
+            logger.exception("Remember failed")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Internal server error")
             return memory_a2a_pb2.Ack(success=False, message="Internal server error")
@@ -256,8 +297,19 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
                 context.set_details(msg)
                 return memory_a2a_pb2.ContextResponse()
 
-            # Validate and apply threshold
-            threshold = request.threshold if request.threshold > 0 else 0.7
+            # Validate threshold - reject negative values
+            threshold = request.threshold
+            if threshold < 0:
+                msg = "threshold cannot be negative"
+                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                context.set_details(msg)
+                return memory_a2a_pb2.ContextResponse()
+            
+            # Apply defaults for zero/unset values
+            if threshold == 0:
+                threshold = 0.7
+            
+            # Validate threshold range
             threshold_error = self._validate_threshold(threshold)
             if threshold_error:
                 context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
@@ -266,11 +318,12 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
 
             max_results = request.max_results if request.max_results > 0 else 5
 
-            # Encode via FlyHash
-            sparse_vector = self.encoder.encode(vector)
-
-            # Recall from memory (thread-safe)
+            # Thread-safe encode and recall
             with self._lock:
+                # Encode via FlyHash (inside lock for thread safety)
+                sparse_vector = self.encoder.encode(vector)
+                
+                # Recall from memory
                 results = self.memory.recall(
                     query_vector=sparse_vector,
                     threshold=threshold,
@@ -288,15 +341,15 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
             confidences = [r.confidence for r in results]
             overall_confidence = float(np.mean(confidences))
 
-            logger.info(f"Recalled {len(results)} memories")
+            logger.info("Recalled %d memories", len(results))
             return memory_a2a_pb2.ContextResponse(
                 context_ids=context_ids,
                 confidences=confidences,
                 overall_confidence=overall_confidence,
             )
 
-        except Exception as e:
-            logger.exception(f"Recall failed: {e}")
+        except Exception:
+            logger.exception("Recall failed")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Internal server error")
             return memory_a2a_pb2.ContextResponse()
@@ -329,8 +382,8 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
             logger.info(message)
             return memory_a2a_pb2.Ack(success=True, message=message)
 
-        except Exception as e:
-            logger.exception(f"Consolidate failed: {e}")
+        except Exception:
+            logger.exception("Consolidate failed")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Internal server error")
             return memory_a2a_pb2.Ack(success=False, message="Internal server error")
@@ -348,7 +401,7 @@ class MembrainServer:
     gRPC server wrapper with lifecycle management.
 
     Handles graceful shutdown on SIGTERM/SIGINT.
-    Supports optional token authentication.
+    Supports token authentication with multiple clients.
     """
 
     def __init__(
@@ -358,7 +411,7 @@ class MembrainServer:
         input_dim: int = DEFAULT_INPUT_DIM,
         expansion_ratio: float = DEFAULT_EXPANSION_RATIO,
         n_neurons: int = DEFAULT_N_NEURONS,
-        auth_token: str | None = None,
+        auth_tokens: dict[str, str] | str | None = None,
     ) -> None:
         """
         Initialize the server.
@@ -369,11 +422,11 @@ class MembrainServer:
             input_dim: Dimension of input embeddings.
             expansion_ratio: FlyHash expansion ratio.
             n_neurons: Number of neurons in BiCameralMemory.
-            auth_token: Optional bearer token for authentication.
+            auth_tokens: Dict of client_id->token, or single token string.
         """
         self.port = port
         self.max_workers = max_workers
-        self.auth_token = auth_token
+        self.auth_tokens = auth_tokens
 
         self.servicer = MemoryUnitServicer(
             input_dim=input_dim,
@@ -388,9 +441,23 @@ class MembrainServer:
         """Start the gRPC server."""
         # Build interceptors list
         interceptors = []
-        if self.auth_token:
-            interceptors.append(TokenAuthInterceptor(self.auth_token))
-            logger.info("Token authentication enabled")
+        if self.auth_tokens:
+            # Validate all tokens
+            tokens = self.auth_tokens
+            if isinstance(tokens, str):
+                tokens = {"default": tokens}
+            
+            for client_id, token in tokens.items():
+                is_valid, error = validate_token(token)
+                if not is_valid:
+                    raise ValueError(f"Invalid token for client '{client_id}': {error}")
+            
+            interceptors.append(TokenAuthInterceptor(self.auth_tokens))
+            # Log client count, NOT the tokens
+            logger.info(
+                "Token authentication enabled for %d client(s)",
+                len(tokens)
+            )
 
         self.server = grpc.server(
             futures.ThreadPoolExecutor(max_workers=self.max_workers),
@@ -402,7 +469,7 @@ class MembrainServer:
         # TODO: Replace with add_secure_port for TLS in production
         self.server.add_insecure_port(f"[::]:{self.port}")
         self.server.start()
-        logger.info(f"Membrain server started on port {self.port}")
+        logger.info("Membrain server started on port %d", self.port)
 
     def wait_for_termination(self) -> None:
         """Block until server terminates."""
@@ -428,13 +495,50 @@ class MembrainServer:
         logger.info("Membrain server stopped")
 
 
+def load_tokens_from_env() -> dict[str, str] | None:
+    """
+    Load authentication tokens from environment.
+    
+    Supports:
+    - MEMBRAIN_AUTH_TOKEN: Single token for backward compatibility
+    - MEMBRAIN_AUTH_TOKENS: JSON dict of client_id->token
+    
+    Returns dict of tokens or None if not configured.
+    """
+    import json
+    
+    # Try multi-client config first
+    tokens_json = os.environ.get("MEMBRAIN_AUTH_TOKENS")
+    if tokens_json:
+        try:
+            tokens = json.loads(tokens_json)
+            if isinstance(tokens, dict) and all(
+                isinstance(k, str) and isinstance(v, str) 
+                for k, v in tokens.items()
+            ):
+                return tokens
+            else:
+                logger.error("MEMBRAIN_AUTH_TOKENS must be a JSON object of string->string")
+                return None
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse MEMBRAIN_AUTH_TOKENS: %s", e)
+            return None
+    
+    # Fall back to single token
+    single_token = os.environ.get("MEMBRAIN_AUTH_TOKEN")
+    if single_token:
+        return {"default": single_token}
+    
+    return None
+
+
 def serve(
     port: int | None = None,
     max_workers: int | None = None,
     input_dim: int | None = None,
     expansion_ratio: float | None = None,
     n_neurons: int | None = None,
-    auth_token: str | None = None,
+    auth_tokens: dict[str, str] | str | None = None,
 ) -> None:
     """
     Start the gRPC server with configuration from environment.
@@ -445,7 +549,8 @@ def serve(
         MEMBRAIN_INPUT_DIM: Input embedding dimension (default: 1536)
         MEMBRAIN_EXPANSION_RATIO: FlyHash expansion ratio (default: 13.0)
         MEMBRAIN_N_NEURONS: Number of SNN neurons (default: 1000)
-        MEMBRAIN_AUTH_TOKEN: Bearer token for authentication (optional)
+        MEMBRAIN_AUTH_TOKEN: Single bearer token (backward compatible)
+        MEMBRAIN_AUTH_TOKENS: JSON dict of client_id->token for multi-client
     """
     # Read configuration from environment with defaults
     port = port or int(os.environ.get("MEMBRAIN_PORT", DEFAULT_PORT))
@@ -461,11 +566,15 @@ def serve(
     n_neurons = n_neurons or int(
         os.environ.get("MEMBRAIN_N_NEURONS", DEFAULT_N_NEURONS)
     )
-    auth_token = auth_token or os.environ.get("MEMBRAIN_AUTH_TOKEN")
+    
+    # Load tokens from args or environment
+    if auth_tokens is None:
+        auth_tokens = load_tokens_from_env()
 
-    if not auth_token:
+    if not auth_tokens:
         logger.warning(
-            "No MEMBRAIN_AUTH_TOKEN set - server running without authentication!"
+            "No authentication tokens configured - server running without authentication! "
+            "Set MEMBRAIN_AUTH_TOKEN or MEMBRAIN_AUTH_TOKENS for security."
         )
 
     server = MembrainServer(
@@ -474,12 +583,12 @@ def serve(
         input_dim=input_dim,
         expansion_ratio=expansion_ratio,
         n_neurons=n_neurons,
-        auth_token=auth_token,
+        auth_tokens=auth_tokens,
     )
 
     # Register signal handlers for graceful shutdown
     def handle_signal(signum: int, frame: object) -> None:
-        logger.info(f"Received signal {signum}")
+        logger.info("Received signal %d", signum)
         server.stop()
         sys.exit(0)
 

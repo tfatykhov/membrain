@@ -15,7 +15,12 @@ import pytest
 grpc = pytest.importorskip("grpc")
 
 from membrain.proto import memory_a2a_pb2
-from membrain.server import MemoryUnitServicer, MembrainServer, TokenAuthInterceptor
+from membrain.server import (
+    MemoryUnitServicer,
+    MembrainServer,
+    TokenAuthInterceptor,
+    validate_token,
+)
 
 
 class TestPing:
@@ -280,19 +285,34 @@ class TestServerLifecycle:
         server.stop(grace=0.1)
         assert server._shutdown_requested is True
 
-    def test_server_with_auth_token(self) -> None:
-        """Server should accept auth_token parameter."""
+    def test_server_with_auth_tokens(self) -> None:
+        """Server should accept auth_tokens parameter."""
+        # Use a token that meets minimum length requirement
+        long_token = "a" * 32
         server = MembrainServer(
             port=50097,
             input_dim=64,
             expansion_ratio=4.0,
             n_neurons=50,
-            auth_token="test-secret-token",
+            auth_tokens={"client1": long_token},
         )
 
-        assert server.auth_token == "test-secret-token"
+        assert server.auth_tokens == {"client1": long_token}
         server.start()
         server.stop(grace=0.1)
+
+    def test_server_rejects_short_token(self) -> None:
+        """Server should reject tokens that are too short."""
+        server = MembrainServer(
+            port=50096,
+            input_dim=64,
+            expansion_ratio=4.0,
+            n_neurons=50,
+            auth_tokens={"client1": "short"},
+        )
+
+        with pytest.raises(ValueError, match="at least"):
+            server.start()
 
 
 class TestTokenAuth:
@@ -480,3 +500,77 @@ class TestIntegration:
 
         # Should get at least some results (threshold-dependent)
         assert isinstance(recall_response, memory_a2a_pb2.ContextResponse)
+
+
+class TestTokenValidation:
+    """Test token validation function."""
+
+    def test_empty_token_rejected(self) -> None:
+        """Empty token should be rejected."""
+        is_valid, error = validate_token("")
+        assert is_valid is False
+        assert "empty" in error.lower()
+
+    def test_short_token_rejected(self) -> None:
+        """Token shorter than minimum length should be rejected."""
+        is_valid, error = validate_token("short")
+        assert is_valid is False
+        assert "32" in error  # minimum length
+
+    def test_valid_token_accepted(self) -> None:
+        """Token meeting requirements should be accepted."""
+        is_valid, error = validate_token("a" * 32)
+        assert is_valid is True
+        assert error is None
+
+    def test_long_token_accepted(self) -> None:
+        """Longer tokens should be accepted."""
+        is_valid, error = validate_token("a" * 64)
+        assert is_valid is True
+
+
+class TestMultiClientAuth:
+    """Test multi-client token authentication."""
+
+    def test_interceptor_accepts_multiple_clients(self) -> None:
+        """Interceptor should accept tokens from multiple clients."""
+        tokens = {
+            "client1": "token-for-client-one",
+            "client2": "token-for-client-two",
+        }
+        interceptor = TokenAuthInterceptor(tokens)
+        
+        # Test client1
+        handler_details = MagicMock()
+        handler_details.invocation_metadata = [
+            ("authorization", "Bearer token-for-client-one")
+        ]
+        continuation = MagicMock()
+        continuation.return_value = "handler"
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        continuation.assert_called_once()
+        
+        # Test client2
+        continuation.reset_mock()
+        handler_details.invocation_metadata = [
+            ("authorization", "Bearer token-for-client-two")
+        ]
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        continuation.assert_called_once()
+
+    def test_interceptor_rejects_unknown_client(self) -> None:
+        """Interceptor should reject tokens not in the config."""
+        tokens = {"client1": "valid-token"}
+        interceptor = TokenAuthInterceptor(tokens)
+        
+        handler_details = MagicMock()
+        handler_details.invocation_metadata = [
+            ("authorization", "Bearer unknown-token")
+        ]
+        continuation = MagicMock()
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        continuation.assert_not_called()
+
