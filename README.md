@@ -22,24 +22,7 @@ Traditional RAG (Retrieval Augmented Generation) uses vector databases for stati
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      LLM Agent                              │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ gRPC (A2A Protocol)
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Membrain Service                         │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │   gRPC API   │──│   FlyHash    │──│  Nengo SNN Core  │  │
-│  │  (A2A Proto) │  │   Encoder    │  │  (Loihi Emu)     │  │
-│  └──────────────┘  └──────────────┘  └──────────────────┘  │
-│                                                             │
-│  Remember(vector) → Encode → Inject Spikes → Learn (Voja)  │
-│  Recall(query)    → Encode → Inject Spikes → Attractor     │
-└─────────────────────────────────────────────────────────────┘
-```
+![Membrain Architecture](docs/architecture.png)
 
 ## Key Concepts
 
