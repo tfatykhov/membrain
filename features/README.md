@@ -22,7 +22,7 @@ This folder contains detailed specifications for all Membrain features.
 | # | Feature | Status | Priority |
 |---|---------|--------|----------|
 | 09 | [Benchmarks](./09-benchmarks.md) | 🔴 Not Started | P0 |
-| 10 | [Structured Logging](./10-structured-logging.md) | 🔴 Not Started | P0 |
+| 10 | [Structured Logging](./10-structured-logging.md) | ✅ Done (PR #23) | P0 |
 
 ### Phase 2 — Synthetic Hippocampus
 
