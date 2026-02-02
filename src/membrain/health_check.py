@@ -34,9 +34,9 @@ def check_health(host: str = "localhost", port: int = 50051, timeout: float = 5.
     try:
         channel = grpc.insecure_channel(f"{host}:{port}")
         stub = memory_a2a_pb2_grpc.MemoryUnitStub(channel)
-        response = stub.Ping(memory_a2a_pb2.Empty(), timeout=timeout)
+        response = stub.Ping(memory_a2a_pb2.Empty(), timeout=timeout)  # type: ignore[attr-defined]
         channel.close()
-        return response.success
+        return bool(response.success)
     except grpc.RpcError:
         return False
     except Exception:
