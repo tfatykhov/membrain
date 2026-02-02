@@ -76,14 +76,18 @@ Retrieves memories.
 ```python
 def consolidate(
     self,
-    duration_ms: int = 1000,
+    noise_scale: float = 0.05,
+    max_steps: int = 50,
+    convergence_threshold: float = 1e-4,
     prune_weak: bool = False,
     prune_threshold: float = 0.1
-) -> int
+) -> tuple[int, int]
 ```
-Performs maintenance.
-- Runs the network with **zero input**. This allows the internal dynamics to settle without external drive.
-- Optionally removes memories from the index if their `importance` is below `prune_threshold`.
+Performs stochastic consolidation (attractor dynamics).
+- **Noise Injection:** Injects Gaussian white noise (`noise_scale`) into the network state to shake it out of local minima.
+- **Attractor Settling:** Iterates the network dynamics until the state difference between steps falls below `convergence_threshold` or `max_steps` is reached.
+- **Pruning:** Optionally removes memories from the index if their `importance` is below `prune_threshold`.
+- **Returns:** A tuple `(steps_to_converge, pruned_count)`. If `steps_to_converge` is -1, it means the network did not settle within `max_steps`.
 
 ## Usage Example
 

@@ -42,6 +42,9 @@ Uses Nengo's neural populations with Voja learning rule to form dynamic associat
 ### Pattern Completion
 Query with noisy or partial input → network settles into learned attractor state → returns complete memory. Works with up to 20% noise.
 
+### Stochastic Consolidation
+Mimics biological memory consolidation by injecting noise during sleep phases. This drives the network into robust attractor states, pruning weak transient memories while strengthening important patterns (Feature 08).
+
 ## Installation
 
 ```bash
@@ -128,6 +131,7 @@ Membrain is configured via environment variables. All have sensible defaults.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `MEMBRAIN_PORT` | int | 50051 | gRPC server port |
+| `MEMBRAIN_HOST` | string | localhost | Host for healthcheck connection |
 | `MEMBRAIN_MAX_WORKERS` | int | 10 | Thread pool size |
 | `MEMBRAIN_INPUT_DIM` | int | 1536 | Input embedding dimension |
 | `MEMBRAIN_EXPANSION_RATIO` | float | 13.0 | FlyHash expansion ratio |
@@ -142,6 +146,7 @@ Membrain is configured via environment variables. All have sensible defaults.
 | `MEMBRAIN_NOISE_SCALE` | float | 0.05 | Gaussian noise std for consolidation |
 | `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling |
 | `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State diff to consider settled |
+| `MEMBRAIN_HEALTH_TIMEOUT` | float | 5.0 | Healthcheck timeout in seconds |
 
 ### Example Docker Configuration
 
@@ -261,8 +266,11 @@ membrain/
 - [x] FlyHash encoder implementation
 - [x] Nengo SNN core (BiCameralMemory)
 - [x] Learning gate for read-only recall
-- [ ] gRPC server (Feature 01)
-- [ ] Docker containerization
+- [x] gRPC server (Feature 01)
+- [x] FlyHash int8 optimization (Feature 06)
+- [x] gRPC healthcheck (Feature 07)
+- [x] Stochastic consolidation (Feature 08)
+- [x] Docker containerization (Feature 09)
 - [ ] Integration tests
 - [ ] Lava process integration (Feature 04)
 - [ ] Loihi hardware migration path
