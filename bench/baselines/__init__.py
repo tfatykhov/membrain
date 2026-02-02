@@ -10,3 +10,9 @@ try:
     __all__.extend(["FAISSFlatBaseline", "FAISSIVFBaseline"])
 except ImportError:
     pass
+
+try:
+    from bench.baselines.membrain_client import MembrainStore
+    __all__.append("MembrainStore")
+except ImportError:
+    pass
