@@ -69,6 +69,6 @@ Add `MEMBRAIN_PRUNE_THRESHOLD` env var for consolidation.
 
 ## Acceptance Criteria
 
-- [ ] Health check validates Ping RPC
-- [ ] `MEMBRAIN_PRUNE_THRESHOLD` configurable
-- [ ] Container health reflects actual gRPC availability
+- [x] Health check validates Ping RPC
+- [x] `MEMBRAIN_PRUNE_THRESHOLD` configurable
+- [x] Container health reflects actual gRPC availability
