@@ -146,6 +146,9 @@ Membrain is configured via environment variables. All have sensible defaults.
 | `MEMBRAIN_AUTH_TOKENS` | string | None | Comma-separated tokens for multi-client |
 | `MEMBRAIN_PRUNE_THRESHOLD` | float | 0.1 | Importance threshold for pruning |
 | `MEMBRAIN_NOISE_SCALE` | float | 0.05 | Gaussian noise std for consolidation |
+| `MEMBRAIN_USE_ATTRACTOR` | bool | false | Enable attractor dynamics for cleanup |
+| `MEMBRAIN_ATTRACTOR_LEARNING_RATE` | float | 0.3 | Hebbian learning rate for attractors |
+| `MEMBRAIN_ATTRACTOR_MAX_STEPS` | int | 50 | Max dynamics iterations for cleanup |
 | `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling |
 | `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State diff to consider settled |
 | `MEMBRAIN_HEALTH_TIMEOUT` | float | 5.0 | Healthcheck timeout in seconds |
