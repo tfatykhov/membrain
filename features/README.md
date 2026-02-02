@@ -19,8 +19,8 @@ This folder contains detailed specifications for all Membrain features.
 
 | # | Feature | Status | Priority |
 |---|---------|--------|----------|
-| 08 | [Stochastic Consolidation](./08-stochastic-consolidation.md) | 🔴 Not Started | **CRITICAL** |
-| 09 | [Docker Compose](./09-docker-compose.md) | 🟡 Needs Verify | P0 |
+| 08 | [Stochastic Consolidation](./08-stochastic-consolidation.md) | ✅ Done | **CRITICAL** |
+| 09 | [Docker Compose](./09-docker-compose.md) | ✅ Done | P0 |
 | 10 | [Benchmarks](./10-benchmarks.md) | 🔴 Not Started | P0 |
 
 ### Phase 2 — Synthetic Hippocampus
@@ -43,8 +43,8 @@ This folder contains detailed specifications for all Membrain features.
 1. ~~**05-config-system**~~ — ✅ Done
 2. ~~**06-flyhash-optimization**~~ — ✅ Done (8x memory reduction)
 3. ~~**07-healthcheck**~~ — ✅ Done (gRPC health check)
-4. **08-stochastic-consolidation** — **CRITICAL** (Patent claim enabler)
-5. **09-docker-compose** — One-command run
+4. ~~**08-stochastic-consolidation**~~ — ✅ Done (Patent claim enabler)
+5. ~~**09-docker-compose**~~ — ✅ Done (One-command run)
 6. **10-benchmarks** — Prove value vs baselines
 
 ### Phase 2: Synthetic Hippocampus

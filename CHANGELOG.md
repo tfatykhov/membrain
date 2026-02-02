@@ -10,7 +10,9 @@ All notable changes to Membrain will be documented in this file.
 - **BREAKING**: `Consolidate` RPC now returns `ConsolidateResponse` instead of `Ack`
 
 ### Added
-- Stochastic consolidation with Gaussian white noise injection (attractor dynamics)
+- **Feature 09**: Docker Compose support for one-command startup (`docker compose up`)
+- **Feature 08**: Stochastic consolidation with Gaussian white noise injection (attractor dynamics)
+- **Feature 07**: gRPC Health Checking Protocol support
 - Convergence detection loop (settles when state difference < threshold)
 - New config params: `noise_scale`, `max_consolidation_steps`, `convergence_threshold`
 - `seed` parameter in `BiCameralMemory` for reproducible consolidation
