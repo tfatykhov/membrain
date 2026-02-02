@@ -267,7 +267,7 @@ class TestServerLifecycle:
     def test_server_creates_servicer(self) -> None:
         """Server should create a MemoryUnitServicer."""
         server = MembrainServer(
-            port=50099,
+            port=50201,
             input_dim=64,
             expansion_ratio=4.0,
             n_neurons=50,
@@ -279,7 +279,7 @@ class TestServerLifecycle:
     def test_server_start_stop(self) -> None:
         """Server should start and stop cleanly."""
         server = MembrainServer(
-            port=50098,
+            port=50202,
             input_dim=64,
             expansion_ratio=4.0,
             n_neurons=50,
@@ -296,7 +296,7 @@ class TestServerLifecycle:
         # Use a token that meets minimum length requirement
         long_token = "a" * 32
         server = MembrainServer(
-            port=50097,
+            port=50203,
             input_dim=64,
             expansion_ratio=4.0,
             n_neurons=50,
@@ -310,7 +310,7 @@ class TestServerLifecycle:
     def test_server_rejects_short_token(self) -> None:
         """Server should reject tokens that are too short."""
         server = MembrainServer(
-            port=50096,
+            port=50204,
             input_dim=64,
             expansion_ratio=4.0,
             n_neurons=50,
