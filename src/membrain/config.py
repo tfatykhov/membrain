@@ -217,7 +217,7 @@ class MembrainConfig:
             if len(token) < 16:
                 raise ValueError("Auth token too short (min 16 chars)")
 
-    def log_config(self, logger: logging.Logger) -> None:
+    def log_config(self, logger: logging.Logger | logging.LoggerAdapter) -> None:  # type: ignore[type-arg]
         """Log resolved configuration (masking sensitive values)."""
         logger.info("Membrain configuration:")
         logger.info(f"  port: {self.port}")
