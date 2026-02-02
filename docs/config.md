@@ -21,6 +21,9 @@ All configuration is loaded from environment variables with sensible defaults.
 | `MEMBRAIN_AUTH_TOKENS` | string | None | Comma-separated auth tokens. |
 | `MEMBRAIN_PRUNE_THRESHOLD` | float | 0.1 | Importance threshold for pruning weak memories. |
 | `MEMBRAIN_NOISE_SCALE` | float | 0.05 | Gaussian noise std for stochastic consolidation. |
+| `MEMBRAIN_USE_ATTRACTOR` | bool | false | Enable attractor dynamics for cleanup. |
+| `MEMBRAIN_ATTRACTOR_LEARNING_RATE` | float | 0.3 | Hebbian learning rate for attractors. |
+| `MEMBRAIN_ATTRACTOR_MAX_STEPS` | int | 50 | Max dynamics iterations for cleanup. |
 | `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling. |
 | `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State difference to consider settled. |
 | `MEMBRAIN_LOG_LEVEL` | string | INFO | Minimum log level. |

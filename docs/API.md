@@ -27,6 +27,9 @@ from membrain.config import MembrainConfig
 | `seed` | `int` | `None` | Random seed for reproducibility. |
 | `auth_tokens` | `list[str]` | `[]` | List of valid authentication tokens. |
 | `prune_threshold` | `float` | `0.1` | Importance threshold for pruning memories. |
+| `use_attractor` | `bool` | `False` | Enable attractor dynamics for cleanup. |
+| `attractor_learning_rate` | `float` | `0.3` | Hebbian learning rate for attractors. |
+| `attractor_max_steps` | `int` | `50` | Max dynamics iterations for cleanup. |
 | `noise_scale` | `float` | `0.05` | Gaussian noise std for stochastic consolidation. |
 | `max_consolidation_steps` | `int` | `50` | Max iterations for attractor settling. |
 | `convergence_threshold` | `float` | `1e-4` | State difference to consider settled. |
