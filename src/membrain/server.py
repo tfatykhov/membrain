@@ -350,6 +350,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
                     query_vector=sparse_vector,
                     threshold=threshold,
                     max_results=max_results,
+                    bypass_snn=request.bypass_snn,
                 )
 
             if not results:
