@@ -23,11 +23,14 @@ class FlyHash:
     Converts dense embedding vectors into sparse binary codes
     suitable for Spiking Neural Network processing.
 
+    Uses int8 {-1, +1} projection matrix for 8x memory reduction
+    compared to float64 Gaussian projections.
+
     Attributes:
         input_dim: Dimension of input vectors.
         output_dim: Dimension of output sparse codes.
         active_bits: Number of active bits (k) in output.
-        projection_matrix: Random binary projection matrix.
+        _projection: Random binary projection matrix (int8).
 
     Example:
         >>> encoder = FlyHash(input_dim=1536, seed=42)
@@ -42,7 +45,6 @@ class FlyHash:
         input_dim: int = 1536,
         expansion_ratio: float = 13.0,
         active_bits: int = 50,
-        connection_probability: float = 0.1,
         seed: int | None = None,
     ) -> None:
         """
@@ -52,7 +54,6 @@ class FlyHash:
             input_dim: Dimension of input vectors (default: 1536 for OpenAI Ada-002).
             expansion_ratio: Output/input dimension ratio (default: 13.0).
             active_bits: Number of active bits in output (default: 50).
-            connection_probability: Probability of connection in projection matrix.
             seed: Random seed for reproducibility.
 
         Raises:
@@ -61,7 +62,6 @@ class FlyHash:
         self.input_dim = input_dim
         self.output_dim = int(input_dim * expansion_ratio)
         self.active_bits = active_bits
-        self.connection_probability = connection_probability
         self._seed = seed
 
         if self.active_bits >= self.output_dim:
@@ -69,23 +69,30 @@ class FlyHash:
                 f"active_bits ({active_bits}) must be less than output_dim ({self.output_dim})"
             )
 
-        # Initialize random projection matrix
-        self._rng = np.random.default_rng(seed)
-        self.projection_matrix = self._build_projection_matrix()
+        # Initialize random projection matrix (int8 for memory efficiency)
+        rng = np.random.default_rng(seed)
+        self._projection = self._build_projection_matrix(rng)
 
-    def _build_projection_matrix(self) -> NDArray[np.float32]:
+    def _build_projection_matrix(
+        self, rng: np.random.Generator
+    ) -> NDArray[np.int8]:
         """
-        Build sparse binary random projection matrix.
+        Build random binary projection matrix with int8 storage.
+
+        Uses {-1, +1} values for better projection quality compared
+        to sparse {0, 1}. Memory: ~30 MB for default config vs ~245 MB
+        for float64 Gaussian.
+
+        Args:
+            rng: NumPy random generator.
 
         Returns:
-            Binary projection matrix of shape (input_dim, output_dim).
+            Binary projection matrix of shape (output_dim, input_dim).
         """
-        matrix = self._rng.choice(
-            [0.0, 1.0],
-            size=(self.input_dim, self.output_dim),
-            p=[1 - self.connection_probability, self.connection_probability],
-        ).astype(np.float32)
-        return matrix
+        # Generate random bits (0 or 1), then map to {-1, +1}
+        bits = rng.integers(0, 2, size=(self.output_dim, self.input_dim), dtype=np.uint8)
+        projection = (bits.astype(np.int8) * 2 - 1)
+        return projection
 
     def encode(self, vector: NDArray[np.floating]) -> NDArray[np.float32]:
         """
@@ -112,8 +119,9 @@ class FlyHash:
         # Ensure float32 for computation
         vector = vector.astype(np.float32)
 
-        # Project to high-dimensional space: y = M^T @ x
-        projection = self.projection_matrix.T @ vector
+        # Project to high-dimensional space: y = P @ x
+        # Cast int8 to float32 for matmul
+        projection = self._projection.astype(np.float32) @ vector
 
         # Winner-Take-All: find indices of top-k values
         # Using argpartition for O(n) instead of O(n log n) sort
@@ -195,8 +203,14 @@ class FlyHash:
         union: int = int(np.sum(np.logical_or(hash1, hash2)))
         return float(intersection / union) if union > 0 else 0.0
 
+    @property
+    def memory_bytes(self) -> int:
+        """Return memory usage of projection matrix in bytes."""
+        return self._projection.nbytes
+
     def __repr__(self) -> str:
         return (
             f"FlyHash(input_dim={self.input_dim}, output_dim={self.output_dim}, "
-            f"active_bits={self.active_bits}, sparsity={self.get_sparsity():.4f})"
+            f"active_bits={self.active_bits}, sparsity={self.get_sparsity():.4f}, "
+            f"memory={self.memory_bytes / 1_000_000:.1f}MB)"
         )
