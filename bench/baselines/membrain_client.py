@@ -48,7 +48,7 @@ class MembrainStore:
         host: str = "localhost",
         port: int = 50051,
         api_key: str | None = None,
-        timeout_s: float = 5.0,
+        timeout_s: float = 30.0,
         max_workers: int = 4,
     ) -> None:
         """Initialize connection to Membrain server.
