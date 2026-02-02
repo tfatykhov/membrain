@@ -76,6 +76,27 @@ class TestFAISSFlatBaseline:
         with pytest.raises(ValueError, match="Duplicate key"):
             store.store("test", vec)
     
+    def test_duplicate_key_in_batch_raises(self, store: FAISSFlatBaseline, rng: np.random.Generator) -> None:
+        """Duplicate keys within a batch should raise ValueError."""
+        items = [
+            ("vec_1", rng.standard_normal(64)),
+            ("vec_2", rng.standard_normal(64)),
+            ("vec_1", rng.standard_normal(64)),  # Duplicate
+        ]
+        
+        with pytest.raises(ValueError, match="Duplicate key in batch"):
+            store.store_batch(items)
+    
+    def test_dimension_mismatch_raises(self, store: FAISSFlatBaseline, rng: np.random.Generator) -> None:
+        """Wrong dimension should raise ValueError."""
+        items = [
+            ("vec_1", rng.standard_normal(64)),
+            ("vec_2", rng.standard_normal(32)),  # Wrong dim
+        ]
+        
+        with pytest.raises(ValueError, match="Dimension mismatch"):
+            store.store_batch(items)
+    
     def test_clear(self, store: FAISSFlatBaseline, rng: np.random.Generator) -> None:
         """Clear should reset the index."""
         store.store("test", rng.standard_normal(64))

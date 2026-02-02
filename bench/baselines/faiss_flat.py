@@ -63,20 +63,29 @@ class FAISSFlatBaseline:
         if not items:
             return
         
-        # Check for duplicates
+        # Check for duplicates (both within batch and against existing)
         new_keys = [k for k, _ in items]
+        seen: set[str] = set()
         for key in new_keys:
             if key in self._key_set:
                 raise ValueError(f"Duplicate key: {key}")
+            if key in seen:
+                raise ValueError(f"Duplicate key in batch: {key}")
+            seen.add(key)
         
-        # Normalize all vectors
-        vectors = np.array([v for _, v in items], dtype=np.float64)
+        # Validate dimensions
+        for key, vec in items:
+            if len(vec) != self._dim:
+                raise ValueError(f"Dimension mismatch for key '{key}': expected {self._dim}, got {len(vec)}")
+        
+        # Normalize all vectors (directly to float32 to avoid float64 copy)
+        vectors = np.array([v for _, v in items], dtype=np.float32)
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         norms = np.maximum(norms, 1e-10)
-        normalized = (vectors / norms).astype(np.float32)
+        vectors /= norms  # In-place normalization
         
         # Bulk add
-        self._index.add(normalized)
+        self._index.add(vectors)
         self._keys.extend(new_keys)
         self._key_set.update(new_keys)
     
@@ -212,17 +221,28 @@ class FAISSIVFBaseline:
         if not items:
             return
         
+        # Check for duplicates (both within batch and against existing)
         new_keys = [k for k, _ in items]
+        seen: set[str] = set()
         for key in new_keys:
             if key in self._key_set:
                 raise ValueError(f"Duplicate key: {key}")
+            if key in seen:
+                raise ValueError(f"Duplicate key in batch: {key}")
+            seen.add(key)
         
-        vectors = np.array([v for _, v in items], dtype=np.float64)
+        # Validate dimensions
+        for key, vec in items:
+            if len(vec) != self._dim:
+                raise ValueError(f"Dimension mismatch for key '{key}': expected {self._dim}, got {len(vec)}")
+        
+        # Normalize directly to float32
+        vectors = np.array([v for _, v in items], dtype=np.float32)
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         norms = np.maximum(norms, 1e-10)
-        normalized = (vectors / norms).astype(np.float32)
+        vectors /= norms  # In-place normalization
         
-        self._index.add(normalized)
+        self._index.add(vectors)
         self._keys.extend(new_keys)
         self._key_set.update(new_keys)
     
