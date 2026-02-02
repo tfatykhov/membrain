@@ -1,4 +1,4 @@
-# PR-010 — Temporal Binding (Sequence Memory)
+# PR-012 — Temporal Binding (Sequence Memory)
 
 ## Status: 🔴 Not Started — P1 Priority
 

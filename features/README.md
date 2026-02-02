@@ -8,50 +8,60 @@ This folder contains detailed specifications for all Membrain features.
 
 | # | Feature | Status |
 |---|---------|--------|
-| 01 | [gRPC A2A Interface](./01-grpc-a2a-interface.md) | ✅ Done (PR #5) |
+| 01 | [gRPC A2A Interface](./01-grpc-a2a-interface.md) | ✅ Done |
 | 02 | [FlyHash Encoder](./02-flyhash-encoder.md) | ✅ Done |
 | 03 | [Neuromorphic Core](./03-neuromorphic-core.md) | ✅ Done |
+| 05 | [Config System](./05-config-system.md) | ✅ Done (PR #14) |
+| 06 | [FlyHash Optimization](./06-flyhash-optimization.md) | ✅ Done (PR #17) |
+| 07 | [Healthcheck](./07-healthcheck.md) | ✅ Done (PR #18) |
 
-### P0 — Product Loop
-
-| # | Feature | Status | Priority |
-|---|---------|--------|----------|
-| 04 | [Lava Process Integration](./04-lava-process-integration.md) | 🔴 Not Started | P0 |
-| 05 | [Config System](./05-config-system.md) | ✅ Done | P0 |
-| 06 | [FlyHash Optimization](./06-flyhash-optimization.md) | 🔴 Not Started | P0 |
-| 07 | [Healthcheck](./07-healthcheck.md) | 🟡 Partial | P0 |
-| 08 | [Docker Compose](./08-docker-compose.md) | 🟡 Needs Verify | P0 |
-| 09 | [Benchmarks](./09-benchmarks.md) | 🔴 Not Started | P0 |
-
-### P1 — Synthetic Hippocampus
+### Phase 1 — Product Loop
 
 | # | Feature | Status | Priority |
 |---|---------|--------|----------|
-| 10 | [Attractor Dynamics](./10-attractor-dynamics.md) | 🔴 Not Started | P1 |
-| 11 | [Temporal Binding](./11-temporal-binding.md) | 🔴 Not Started | P1 |
-| 12 | [Persistence](./12-persistence.md) | 🔴 Not Started | P1 |
+| 08 | [Stochastic Consolidation](./08-stochastic-consolidation.md) | 🔴 Not Started | **CRITICAL** |
+| 09 | [Docker Compose](./09-docker-compose.md) | 🟡 Needs Verify | P0 |
+| 10 | [Benchmarks](./10-benchmarks.md) | 🔴 Not Started | P0 |
+
+### Phase 2 — Synthetic Hippocampus
+
+| # | Feature | Status | Priority |
+|---|---------|--------|----------|
+| 11 | [Attractor Dynamics](./11-attractor-dynamics.md) | 🔴 Not Started | P1 |
+| 12 | [Temporal Binding](./12-temporal-binding.md) | 🔴 Not Started | P1 |
+| 13 | [Persistence](./13-persistence.md) | 🔴 Not Started | P1 |
+
+### Phase 3 — Hardware Migration
+
+| # | Feature | Status | Priority |
+|---|---------|--------|----------|
+| 14 | [Lava Process Integration](./14-lava-process-integration.md) | 🔴 Not Started | P2 |
 
 ## Recommended Execution Order
 
 ### Phase 1: Product Loop
-1. **05-config-system** — Foundational (config dataclass)
-2. **06-flyhash-optimization** — Memory reduction (8x)
-3. **07-healthcheck** — gRPC health check
-4. **08-docker-compose** — One-command run
-5. **09-benchmarks** — Prove value vs baselines
+1. ~~**05-config-system**~~ — ✅ Done
+2. ~~**06-flyhash-optimization**~~ — ✅ Done (8x memory reduction)
+3. ~~**07-healthcheck**~~ — ✅ Done (gRPC health check)
+4. **08-stochastic-consolidation** — **CRITICAL** (Patent claim enabler)
+5. **09-docker-compose** — One-command run
+6. **10-benchmarks** — Prove value vs baselines
 
 ### Phase 2: Synthetic Hippocampus
-6. **10-attractor-dynamics** — Key differentiator
-7. **11-temporal-binding** — Sequence memory
-8. **12-persistence** — Production readiness
+7. **11-attractor-dynamics** — Pattern completion
+8. **12-temporal-binding** — Sequence memory
+9. **13-persistence** — Production readiness
 
-## Issues Found
+### Phase 3: Hardware Migration
+10. **14-lava-process-integration** — Intel Loihi 2 deployment
 
-1. **FlyHash uses ~245 MB** for default config → fix with int8
-2. **Config scattered** → centralize in dataclass
-3. **Healthcheck is socket-only** → needs gRPC validation
-4. **No baseline comparisons** → can't prove SNN advantage
-5. **Recall isn't pattern completion** → needs attractor dynamics
+## Critical Feature: Stochastic Consolidation
+
+**Feature 08** is marked as **CRITICAL** because it:
+- Enables the core patent claim for "Attractor Dynamics"
+- Provides biological plausibility (mimics hippocampal consolidation)
+- Distinguishes Membrain from simple vector search
+- Must be implemented before benchmarks can prove the SNN advantage
 
 ## Definition of Done (All Features)
 
