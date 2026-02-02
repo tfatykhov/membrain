@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import logging
+import math
 import sys
 from dataclasses import asdict
 from typing import TYPE_CHECKING
@@ -123,11 +124,14 @@ def run_benchmark_single(
     """
     rng = np.random.default_rng(seed)
     
-    # Store all vectors
+    # Store all vectors - stream from dataset directly
     store.clear()
-    store.store_batch(list(dataset))
+    for key, vector in dataset:
+        store.store(key, vector)
     
-    # Query with noise
+    # Query with noise - re-iterate dataset
+    
+    # Query with noise - re-iterate dataset
     latencies_ms: list[float] = []
     hits_at_1: list[bool] = []
     hits_at_5: list[bool] = []
@@ -315,7 +319,10 @@ def print_summary(results: list[BenchmarkResult]) -> None:
         method_results = [r for r in results if r.method == method]
         values = []
         for noise in noise_levels:
-            r = next((x for x in method_results if x.noise_level == noise), None)
+            r = next(
+                (x for x in method_results if math.isclose(x.noise_level, noise)),
+                None,
+            )
             values.append(f"{r.hit_at_1:.2f}" if r else "N/A ")
         print(f"{method:<20} " + "  ".join(values))
     
@@ -329,7 +336,10 @@ def print_summary(results: list[BenchmarkResult]) -> None:
         method_results = [r for r in results if r.method == method]
         values = []
         for noise in noise_levels:
-            r = next((x for x in method_results if x.noise_level == noise), None)
+            r = next(
+                (x for x in method_results if math.isclose(x.noise_level, noise)),
+                None,
+            )
             values.append(f"{r.avg_latency_ms:.2f}" if r else "N/A ")
         print(f"{method:<20} " + "  ".join(values))
     
