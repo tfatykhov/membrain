@@ -40,7 +40,9 @@ Converts dense LLM embeddings (1536-d floats) into sparse binary spike trains (2
 Uses Nengo's neural populations with Voja learning rule to form dynamic associations. Unlike hash tables, memories naturally cluster by semantic similarity.
 
 ### Pattern Completion
-Query with noisy or partial input → network settles into learned attractor state → returns complete memory. Works with up to 20% noise.
+Query with noisy or partial input → network settles into learned attractor state → returns complete memory. Works with up to 20% noise. Now integrated with `AttractorMemory` for enhanced cleanup (requires `MEMBRAIN_USE_ATTRACTOR=true`).
+
+> **Warning**: Enabling attractor dynamics creates an $O(N^2)$ weight matrix. For default 20,000 dimensions, this requires ~1.6 GB RAM. Use with caution on high-dimensional inputs.
 
 ### Stochastic Consolidation
 Mimics biological memory consolidation by injecting noise during sleep phases. This drives the network into robust attractor states, pruning weak transient memories while strengthening important patterns (Feature 08).
