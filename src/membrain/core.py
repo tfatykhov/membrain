@@ -15,8 +15,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 
+from membrain.logging import get_logger
+
 if TYPE_CHECKING:
     import nengo
+
+logger = get_logger(__name__)
 
 # Check for nengo availability
 try:
@@ -242,6 +246,15 @@ class BiCameralMemory:
         # Clear input
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
 
+        logger.info(
+            "Memory stored",
+            extra={
+                "context_id": context_id,
+                "importance": importance,
+                "memory_count": len(self._memory_index),
+            },
+        )
+
         return True
 
     def recall(
@@ -303,7 +316,18 @@ class BiCameralMemory:
 
         # Sort by confidence descending
         results.sort(key=lambda x: x.confidence, reverse=True)
-        return results[:max_results]
+        final_results = results[:max_results]
+
+        logger.info(
+            "Recall completed",
+            extra={
+                "matches": len(final_results),
+                "threshold": threshold,
+                "memory_count": len(self._memory_index),
+            },
+        )
+
+        return final_results
 
     def consolidate(
         self,
@@ -390,6 +414,16 @@ class BiCameralMemory:
             for cid in to_remove:
                 del self._memory_index[cid]
                 pruned_count += 1
+
+        logger.info(
+            "Consolidation completed",
+            extra={
+                "steps_to_converge": steps_to_converge,
+                "pruned_count": pruned_count,
+                "noise_scale": noise_scale,
+                "memory_count": len(self._memory_index),
+            },
+        )
 
         return (steps_to_converge, pruned_count)
 

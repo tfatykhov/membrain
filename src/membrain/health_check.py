@@ -13,10 +13,14 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 import grpc
 
+from membrain.logging import get_logger
 from membrain.proto import memory_a2a_pb2, memory_a2a_pb2_grpc
+
+logger = get_logger(__name__)
 
 
 def check_health(host: str = "localhost", port: int = 50051, timeout: float = 5.0) -> bool:
@@ -31,15 +35,37 @@ def check_health(host: str = "localhost", port: int = 50051, timeout: float = 5.
     Returns:
         True if healthy, False otherwise.
     """
+    start_time = time.perf_counter()
     try:
         channel = grpc.insecure_channel(f"{host}:{port}")
         stub = memory_a2a_pb2_grpc.MemoryUnitStub(channel)
         response = stub.Ping(memory_a2a_pb2.Empty(), timeout=timeout)  # type: ignore[attr-defined]
         channel.close()
-        return bool(response.success)
-    except grpc.RpcError:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        if response.success:
+            logger.info(
+                "Health check passed",
+                extra={"host": host, "port": port, "latency_ms": round(latency_ms, 2)},
+            )
+            return True
+        else:
+            logger.warning(
+                "Health check failed: server returned failure",
+                extra={"host": host, "port": port},
+            )
+            return False
+    except grpc.RpcError as e:
+        logger.error(
+            "Health check failed: RPC error",
+            extra={"host": host, "port": port, "error": str(e)},
+        )
         return False
-    except Exception:
+    except Exception as e:
+        logger.error(
+            "Health check failed: unexpected error",
+            extra={"host": host, "port": port, "error": str(e)},
+        )
         return False
 
 
