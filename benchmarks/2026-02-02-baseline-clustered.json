@@ -1,0 +1,35 @@
+{
+  "date": "2026-02-02",
+  "commit": "1622ae3",
+  "version": "0.4.0",
+  "phase": "baseline",
+  "features_enabled": ["flyhash_int8", "bicameral", "stochastic_consolidation"],
+  "config": {
+    "samples": 100,
+    "dim": 128,
+    "seed": 42,
+    "dataset": "synthetic_clustered",
+    "n_clusters": 10,
+    "cluster_std": 0.1,
+    "methods_tested": ["CosineBaseline"],
+    "methods_skipped": ["FAISSFlatBaseline (faiss not installed)", "Membrain (server not running)"]
+  },
+  "results": {
+    "CosineBaseline": {
+      "noise_0.0": {"hit_at_1": 1.00, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.23},
+      "noise_0.1": {"hit_at_1": 0.99, "hit_at_5": 1.0, "mrr": 0.995, "avg_latency_ms": 0.19},
+      "noise_0.2": {"hit_at_1": 0.84, "hit_at_5": 0.99, "mrr": 0.897, "avg_latency_ms": 0.17},
+      "noise_0.3": {"hit_at_1": 0.59, "hit_at_5": 0.90, "mrr": 0.711, "avg_latency_ms": 0.32},
+      "noise_0.4": {"hit_at_1": 0.36, "hit_at_5": 0.72, "mrr": 0.504, "avg_latency_ms": 0.25},
+      "noise_0.5": {"hit_at_1": 0.24, "hit_at_5": 0.53, "mrr": 0.360, "avg_latency_ms": 0.20}
+    }
+  },
+  "notes": [
+    "Clustered dataset (10 clusters, std=0.1) creates realistic recall challenge",
+    "Hit@1 drops from 100% to 24% as noise increases from 0% to 50%",
+    "This is the baseline Membrain attractor dynamics needs to beat",
+    "FAISS not installed in uv environment",
+    "Membrain server not running for this baseline"
+  ],
+  "thesis": "Membrain's attractor dynamics should maintain higher hit@1 at 30%+ noise compared to similarity search"
+}

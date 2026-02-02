@@ -26,12 +26,12 @@ class TestGetAvailableStores:
 
     def test_cosine_always_available(self) -> None:
         """CosineBaseline should always be available."""
-        stores = get_available_stores()
+        stores = get_available_stores(dim=128)
         assert "cosine" in stores
 
     def test_returns_dict(self) -> None:
         """Should return a dict mapping names to classes."""
-        stores = get_available_stores()
+        stores = get_available_stores(dim=128)
         assert isinstance(stores, dict)
         assert len(stores) >= 1
 
@@ -49,6 +49,7 @@ class TestRunBenchmarkSingle:
         result = run_benchmark_single(
             store=store,
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=0.0,
             seed=42,
         )
@@ -68,6 +69,7 @@ class TestRunBenchmarkSingle:
         result_clean = run_benchmark_single(
             store=store,
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=0.0,
             seed=42,
         )
@@ -75,6 +77,7 @@ class TestRunBenchmarkSingle:
         result_noisy = run_benchmark_single(
             store=store,
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=0.8,  # Very high noise
             seed=42,
         )
@@ -92,6 +95,7 @@ class TestRunBenchmarkSingle:
         result = run_benchmark_single(
             store=store,
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=0.1,
             seed=42,
         )
@@ -113,6 +117,7 @@ class TestRunBenchmarkSingle:
         result1 = run_benchmark_single(
             store=CosineBaseline(),
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=0.2,
             seed=123,
         )
@@ -120,6 +125,7 @@ class TestRunBenchmarkSingle:
         result2 = run_benchmark_single(
             store=CosineBaseline(),
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=0.2,
             seed=123,
         )
@@ -236,6 +242,7 @@ class TestNoiseRobustness:
         result = run_benchmark_single(
             store=store,
             dataset=dataset,
+            dataset_name="synthetic_gaussian",
             noise_level=noise_level,
             seed=42,
         )

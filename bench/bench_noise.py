@@ -42,25 +42,27 @@ DEFAULT_DIM = 128
 DEFAULT_K = 10
 DEFAULT_NOISE_LEVELS = [0.0, 0.05, 0.10, 0.20, 0.30]
 DEFAULT_SEED = 42
+DEFAULT_DATASET = "gaussian"
+VALID_DATASETS = ["gaussian", "clustered"]
 
 
-def get_available_stores() -> dict[str, type[VectorStore]]:
+def get_available_stores(dim: int) -> dict[str, type[VectorStore] | tuple[type[VectorStore], dict]]:
     """Discover available VectorStore implementations.
     
     Returns:
-        Dict mapping method names to store classes.
+        Dict mapping method names to store classes or (class, kwargs) tuples.
         Only includes stores with available dependencies.
     """
-    stores: dict[str, type[VectorStore]] = {}
+    stores: dict[str, type[VectorStore] | tuple[type[VectorStore], dict]] = {}
     
     # Always available
     from bench.baselines.cosine import CosineBaseline
     stores["cosine"] = CosineBaseline
     
-    # Optional: FAISS
+    # Optional: FAISS (requires dim argument)
     try:
         from bench.baselines.faiss_flat import FAISSFlatBaseline
-        stores["faiss_flat"] = FAISSFlatBaseline
+        stores["faiss_flat"] = (FAISSFlatBaseline, {"dim": dim})
     except ImportError:
         logger.debug("FAISS not available, skipping faiss_flat baseline")
     
@@ -106,6 +108,7 @@ def check_membrain_available(
 def run_benchmark_single(
     store: VectorStore,
     dataset: SyntheticDataset,
+    dataset_name: str,
     noise_level: float,
     seed: int,
     k: int = DEFAULT_K,
@@ -115,6 +118,7 @@ def run_benchmark_single(
     Args:
         store: VectorStore implementation to test
         dataset: Source vectors
+        dataset_name: Name of dataset for result logging
         noise_level: Gaussian noise std to add to queries
         seed: RNG seed for reproducibility
         k: Max k for hit@k metrics
@@ -158,7 +162,7 @@ def run_benchmark_single(
     
     return BenchmarkResult(
         method=store.__class__.__name__,
-        dataset="synthetic_gaussian",
+        dataset=dataset_name,
         noise_level=noise_level,
         num_queries=n_queries,
         num_stored=store.count,
@@ -186,6 +190,7 @@ def run_benchmarks(
     seed: int = DEFAULT_SEED,
     methods: list[str] | None = None,
     skip_membrain: bool = False,
+    dataset_type: str = DEFAULT_DATASET,
 ) -> list[BenchmarkResult]:
     """Run full benchmark suite across all stores and noise levels.
     
@@ -196,6 +201,7 @@ def run_benchmarks(
         seed: RNG seed
         methods: Filter to specific methods (None = all available)
         skip_membrain: Skip Membrain even if available
+        dataset_type: Type of dataset ("gaussian" or "clustered")
         
     Returns:
         List of BenchmarkResult for each (method, noise_level) combination
@@ -203,8 +209,8 @@ def run_benchmarks(
     if noise_levels is None:
         noise_levels = DEFAULT_NOISE_LEVELS
     
-    # Discover available stores
-    available = get_available_stores()
+    # Discover available stores (pass dim for FAISS)
+    available = get_available_stores(dim)
     
     # Filter to requested methods
     if methods:
@@ -229,19 +235,30 @@ def run_benchmarks(
             "dim": dim,
             "noise_levels": noise_levels,
             "seed": seed,
+            "dataset": dataset_type,
         },
     )
     
     # Generate dataset
-    dataset = SyntheticDataset.gaussian(n=samples, dim=dim, seed=seed)
+    if dataset_type == "clustered":
+        dataset = SyntheticDataset.clustered(n=samples, dim=dim, seed=seed)
+        dataset_name = "synthetic_clustered"
+    else:
+        dataset = SyntheticDataset.gaussian(n=samples, dim=dim, seed=seed)
+        dataset_name = "synthetic_gaussian"
     
     results: list[BenchmarkResult] = []
     
-    for method_name, store_cls in available.items():
+    for method_name, store_entry in available.items():
         logger.info(f"Running benchmark for {method_name}...")
         
         try:
-            store = store_cls()
+            # Handle stores that need kwargs (like FAISS with dim)
+            if isinstance(store_entry, tuple):
+                store_cls, kwargs = store_entry
+                store = store_cls(**kwargs)
+            else:
+                store = store_entry()
         except Exception as e:
             logger.error(f"Failed to instantiate {method_name}: {e}")
             continue
@@ -253,6 +270,7 @@ def run_benchmarks(
                 result = run_benchmark_single(
                     store=store,
                     dataset=dataset,
+                    dataset_name=dataset_name,
                     noise_level=noise_level,
                     seed=seed,
                 )
@@ -396,6 +414,13 @@ def main() -> int:
         help="Skip Membrain even if server is available",
     )
     parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=VALID_DATASETS,
+        default=DEFAULT_DATASET,
+        help="Dataset type: 'gaussian' (easy) or 'clustered' (realistic)",
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Enable verbose logging",
@@ -419,6 +444,7 @@ def main() -> int:
         seed=args.seed,
         methods=args.methods,
         skip_membrain=args.skip_membrain,
+        dataset_type=args.dataset,
     )
     
     if not results:

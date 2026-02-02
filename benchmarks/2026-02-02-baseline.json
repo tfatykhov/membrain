@@ -1,0 +1,39 @@
+{
+  "date": "2026-02-02",
+  "commit": "1622ae3",
+  "version": "0.4.0",
+  "phase": "baseline",
+  "features_enabled": ["flyhash_int8", "bicameral", "stochastic_consolidation"],
+  "config": {
+    "samples": 100,
+    "dim": 128,
+    "seed": 42,
+    "dataset": "synthetic_gaussian",
+    "methods_tested": ["CosineBaseline"],
+    "methods_skipped": ["FAISSFlatBaseline (init bug)", "Membrain (server not running)"]
+  },
+  "results": {
+    "CosineBaseline": {
+      "noise_0.0": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.28, "throughput_qps": 3445},
+      "noise_0.1": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.43, "throughput_qps": 2325},
+      "noise_0.2": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.62, "throughput_qps": 1613},
+      "noise_0.3": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.39, "throughput_qps": 2564},
+      "noise_0.4": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.54, "throughput_qps": 1852},
+      "noise_0.5": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.48, "throughput_qps": 2083},
+      "noise_0.6": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.20, "throughput_qps": 5000},
+      "noise_0.7": {"hit_at_1": 1.0, "hit_at_5": 1.0, "mrr": 1.0, "avg_latency_ms": 0.45, "throughput_qps": 2222}
+    }
+  },
+  "notes": [
+    "Cosine baseline shows 100% hit@1 even at 70% noise - synthetic Gaussian dataset is too easy",
+    "Need clustered dataset option to create realistic recall challenges",
+    "FAISSFlatBaseline has init bug - missing dim argument",
+    "Membrain server not running - baseline-only run"
+  ],
+  "next_steps": [
+    "Add --dataset option (gaussian|clustered) to bench_noise.py",
+    "Fix FAISSFlatBaseline initialization",
+    "Run with Membrain server for full comparison",
+    "Re-run with clustered dataset for harder recall task"
+  ]
+}
