@@ -66,7 +66,12 @@ class TokenAuthInterceptor(grpc.ServerInterceptor):
     Validates the 'authorization' metadata header against configured tokens.
     Uses timing-safe comparison to prevent timing attacks.
     Supports multiple client tokens.
+
+    The Ping method is exempt from authentication for health checks.
     """
+
+    # Methods that don't require authentication
+    AUTH_EXEMPT_METHODS = frozenset(["/membrain.MemoryUnit/Ping"])
 
     def __init__(self, tokens: dict[str, str]) -> None:
         """
@@ -93,6 +98,11 @@ class TokenAuthInterceptor(grpc.ServerInterceptor):
         handler_call_details: grpc.HandlerCallDetails,
     ) -> Any:
         """Intercept and validate incoming requests."""
+        # Check if method is exempt from authentication
+        method = handler_call_details.method
+        if method in self.AUTH_EXEMPT_METHODS:
+            return continuation(handler_call_details)
+
         # Extract authorization header
         metadata = dict(handler_call_details.invocation_metadata)
         auth_value = metadata.get("authorization", "")

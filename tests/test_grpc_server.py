@@ -325,6 +325,7 @@ class TestTokenAuth:
         # Mock handler details with no auth header
         handler_details = MagicMock()
         handler_details.invocation_metadata = []
+        handler_details.method = "/membrain.MemoryUnit/Remember"
         
         continuation = MagicMock()
         
@@ -339,6 +340,7 @@ class TestTokenAuth:
         
         handler_details = MagicMock()
         handler_details.invocation_metadata = [("authorization", "Bearer wrong-token")]
+        handler_details.method = "/membrain.MemoryUnit/Remember"
         
         continuation = MagicMock()
         
@@ -352,12 +354,30 @@ class TestTokenAuth:
         
         handler_details = MagicMock()
         handler_details.invocation_metadata = [("authorization", "Bearer secret-token")]
+        handler_details.method = "/membrain.MemoryUnit/Remember"
         
         continuation = MagicMock()
         continuation.return_value = "handler"
         
         result = interceptor.intercept_service(continuation, handler_details)
         
+        continuation.assert_called_once_with(handler_details)
+        assert result == "handler"
+
+    def test_interceptor_exempts_ping(self) -> None:
+        """Ping should be exempt from authentication."""
+        interceptor = TokenAuthInterceptor("secret-token")
+        
+        handler_details = MagicMock()
+        handler_details.invocation_metadata = []  # No auth header
+        handler_details.method = "/membrain.MemoryUnit/Ping"
+        
+        continuation = MagicMock()
+        continuation.return_value = "handler"
+        
+        result = interceptor.intercept_service(continuation, handler_details)
+        
+        # Ping should bypass auth and call continuation
         continuation.assert_called_once_with(handler_details)
         assert result == "handler"
 

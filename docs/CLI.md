@@ -34,6 +34,8 @@ All configuration is controlled via `MEMBRAIN_` prefixed variables.
 | `MEMBRAIN_SEED` | Integer | `None` | Set for deterministic execution. |
 | `MEMBRAIN_AUTH_TOKEN` | String | - | Single authentication token. |
 | `MEMBRAIN_AUTH_TOKENS` | String | - | Comma-separated list of tokens. |
+| `MEMBRAIN_PRUNE_THRESHOLD` | Float | `0.1` | Importance threshold for pruning. |
+| `MEMBRAIN_HEALTH_TIMEOUT` | Float | `5.0` | Health check timeout (seconds). |
 
 ## Validation Errors
 

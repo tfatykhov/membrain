@@ -26,6 +26,7 @@ from membrain.config import MembrainConfig
 | `synapse` | `float` | `0.01` | Synapse time constant in seconds. |
 | `seed` | `int` | `None` | Random seed for reproducibility. |
 | `auth_tokens` | `list[str]` | `[]` | List of valid authentication tokens. |
+| `prune_threshold` | `float` | `0.1` | Importance threshold for pruning memories. |
 
 #### Methods
 

@@ -59,6 +59,9 @@ class MembrainConfig:
     # Authentication
     auth_tokens: list[str] = field(default_factory=list)
 
+    # Consolidation
+    prune_threshold: float = 0.1  # Importance threshold for pruning weak memories
+
     @classmethod
     def from_env(cls) -> "MembrainConfig":
         """Load configuration from environment variables.
@@ -75,6 +78,7 @@ class MembrainConfig:
             MEMBRAIN_SEED: Random seed for reproducibility (default: None)
             MEMBRAIN_AUTH_TOKEN: Single auth token (legacy)
             MEMBRAIN_AUTH_TOKENS: Comma-separated auth tokens
+            MEMBRAIN_PRUNE_THRESHOLD: Importance threshold for pruning (default: 0.1)
         """
         # Parse auth tokens (support both single and multi-token formats)
         tokens = _parse_token_list(os.environ.get("MEMBRAIN_AUTH_TOKENS"))
@@ -93,6 +97,7 @@ class MembrainConfig:
             synapse=float(os.environ.get("MEMBRAIN_SYNAPSE", 0.01)),
             seed=_parse_optional_int(os.environ.get("MEMBRAIN_SEED")),
             auth_tokens=tokens,
+            prune_threshold=float(os.environ.get("MEMBRAIN_PRUNE_THRESHOLD", 0.1)),
         )
 
     @classmethod
@@ -112,6 +117,7 @@ class MembrainConfig:
             synapse=0.01,
             seed=42,
             auth_tokens=["test-token-for-ci"],
+            prune_threshold=0.1,
         )
 
     def validate(self) -> None:
@@ -146,6 +152,11 @@ class MembrainConfig:
         if self.synapse <= 0:
             raise ValueError(f"synapse must be positive, got {self.synapse}")
 
+        if self.prune_threshold < 0 or self.prune_threshold > 1:
+            raise ValueError(
+                f"prune_threshold must be 0.0-1.0, got {self.prune_threshold}"
+            )
+
         # Validate auth tokens (if any are provided)
         for token in self.auth_tokens:
             if len(token) < 16:
@@ -164,3 +175,4 @@ class MembrainConfig:
         logger.info(f"  synapse: {self.synapse}")
         logger.info(f"  seed: {self.seed or 'random'}")
         logger.info(f"  auth_tokens: {len(self.auth_tokens)} configured")
+        logger.info(f"  prune_threshold: {self.prune_threshold}")

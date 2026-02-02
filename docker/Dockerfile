@@ -34,9 +34,9 @@ RUN python -m grpc_tools.protoc \
 # Expose gRPC port
 EXPOSE 50051
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import grpc; channel = grpc.insecure_channel('localhost:50051'); channel.close()" || exit 1
+# Health check - validates gRPC Ping RPC
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -m membrain.health_check || exit 1
 
 # Run the server
 CMD ["python", "-m", "membrain.server"]
