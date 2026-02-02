@@ -59,13 +59,38 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
-### Start the Memory Service
+### Docker (Recommended)
 
 ```bash
-# Using Docker (recommended)
-docker compose up -d
+# Clone and run with one command
+git clone https://github.com/tfatykhov/membrain.git
+cd membrain
+docker compose -f docker/docker-compose.yml up -d
 
-# Or run directly
+# Check health (should show "healthy" after ~15s)
+docker compose -f docker/docker-compose.yml ps
+```
+
+### Custom Configuration
+
+```bash
+# Copy example config
+cp docker/.env.example docker/.env
+
+# Edit settings (auth token, dimensions, etc.)
+nano docker/.env
+
+# Start with custom config
+docker compose -f docker/docker-compose.yml --env-file docker/.env up -d
+```
+
+### Run Locally (Development)
+
+```bash
+# Install dependencies
+pip install -e ".[dev]"
+
+# Start server
 python -m membrain.server
 ```
 
