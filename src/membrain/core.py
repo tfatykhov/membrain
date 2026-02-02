@@ -108,6 +108,9 @@ class BiCameralMemory:
         self.dt = dt
         self._seed = seed
 
+        # RNG for stochastic operations (consolidation noise)
+        self._rng = np.random.default_rng(seed)
+
         # Memory index: context_id -> MemoryEntry
         self._memory_index: dict[str, MemoryEntry] = {}
 
@@ -343,13 +346,13 @@ class BiCameralMemory:
             current_state = output_data[-1].astype(np.float32)
 
         # Inject Gaussian white noise (the "kick" to escape local minima)
-        rng = np.random.default_rng(self._seed)
-        noise = rng.normal(0, noise_scale, current_state.shape).astype(np.float32)
+        # Instance RNG ensures different noise each call (seeded for reproducibility)
+        noise = self._rng.normal(0, noise_scale, current_state.shape).astype(np.float32)
         perturbed_state = current_state + noise
 
         # Set perturbed state as input and disable learning during consolidation
         self._input_value = perturbed_state
-        self._learning_gate_value = 1.0  # Disable learning
+        self._learning_gate_value = -1.0  # Disable learning (Voja: -1 = no learn)
 
         steps_to_converge = -1
 
