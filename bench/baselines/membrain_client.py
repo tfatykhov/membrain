@@ -71,7 +71,8 @@ class MembrainStore:
             warnings.warn(
                 f"Sending API key over insecure channel to {host}. "
                 "Consider using TLS for production environments.",
-                SecurityWarning,
+                UserWarning,
+                stacklevel=2,
             )
         
         # Connection state

@@ -100,8 +100,9 @@ class TestMembrainStoreIntegration:
         assert store.count == 1
         
         results = store.query(vec, k=1)
-        # Note: Membrain uses attractor dynamics, may not return exact match
-        assert len(results) >= 0  # May be empty if attractor not converged
+        # Membrain uses attractor dynamics, may need time to converge
+        # Just verify we get a response without error
+        assert isinstance(results, list)
         
         store.close()
     
