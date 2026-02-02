@@ -189,6 +189,7 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
             dimensions=self.output_dim,
             synapse=config.synapse,
             dt=config.dt,
+            seed=config.seed,
         )
 
         # Build the simulator
@@ -377,35 +378,65 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
         self,
         request: memory_a2a_pb2.SleepSignal,
         context: grpc.ServicerContext,
-    ) -> memory_a2a_pb2.Ack:
+    ) -> memory_a2a_pb2.ConsolidateResponse:  # type: ignore[name-defined]
         """
-        Trigger sleep phase for memory consolidation.
+        Trigger stochastic consolidation phase (attractor dynamics).
 
-        Runs the network without input to allow attractor states to settle.
+        Injects Gaussian white noise into the network state, then iterates
+        recurrent dynamics until the system settles into an attractor state.
         Optionally prunes weak associations.
         """
         try:
-            duration_ms = request.duration_ms if request.duration_ms > 0 else 1000
+            # Use request values or defaults from config
+            noise_scale = request.noise_scale if request.noise_scale > 0 else self.config.noise_scale
+            max_steps = request.max_steps if request.max_steps > 0 else self.config.max_consolidation_steps
+            convergence_threshold = (
+                request.convergence_threshold
+                if request.convergence_threshold > 0
+                else self.config.convergence_threshold
+            )
+            prune_threshold = (
+                request.prune_threshold
+                if request.prune_threshold > 0
+                else self.config.prune_threshold
+            )
 
             # Consolidate with lock (thread-safe)
             with self._lock:
-                pruned = self.memory.consolidate(
-                    duration_ms=duration_ms,
+                steps_to_converge, pruned = self.memory.consolidate(
+                    noise_scale=noise_scale,
+                    max_steps=max_steps,
+                    convergence_threshold=convergence_threshold,
                     prune_weak=request.prune_weak,
+                    prune_threshold=prune_threshold,
                 )
 
-            message = f"Consolidation complete ({duration_ms}ms)"
+            if steps_to_converge >= 0:
+                message = f"Settled into attractor in {steps_to_converge} steps"
+            else:
+                message = f"Max steps ({max_steps}) reached without convergence"
+
             if request.prune_weak:
                 message += f", pruned {pruned} weak memories"
 
             logger.info(message)
-            return memory_a2a_pb2.Ack(success=True, message=message)
+            return memory_a2a_pb2.ConsolidateResponse(  # type: ignore[attr-defined]
+                success=True,
+                steps_to_converge=steps_to_converge,
+                pruned_count=pruned,
+                message=message,
+            )
 
         except Exception:
             logger.exception("Consolidate failed")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details("Internal server error")
-            return memory_a2a_pb2.Ack(success=False, message="Internal server error")
+            return memory_a2a_pb2.ConsolidateResponse(  # type: ignore[attr-defined]
+                success=False,
+                steps_to_converge=-1,
+                pruned_count=0,
+                message="Internal server error",
+            )
 
     def shutdown(self) -> None:
         """Clean up resources."""
