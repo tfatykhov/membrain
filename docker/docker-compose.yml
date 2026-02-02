@@ -5,22 +5,41 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    image: membrain:${MEMBRAIN_VERSION:-latest}
     container_name: membrain
     ports:
-      - "50051:50051"
+      - "${MEMBRAIN_PORT:-50051}:50051"
     environment:
-      - LOIHI_BACKEND=SIM
+      # Server
       - MEMBRAIN_PORT=50051
-      - LOG_LEVEL=INFO
+      - MEMBRAIN_MAX_WORKERS=${MEMBRAIN_MAX_WORKERS:-10}
+      # Encoder (FlyHash)
+      - MEMBRAIN_INPUT_DIM=${MEMBRAIN_INPUT_DIM:-1536}
+      - MEMBRAIN_EXPANSION_RATIO=${MEMBRAIN_EXPANSION_RATIO:-13.0}
+      - MEMBRAIN_ACTIVE_BITS=${MEMBRAIN_ACTIVE_BITS:-}
+      # Neural Network
+      - MEMBRAIN_N_NEURONS=${MEMBRAIN_N_NEURONS:-1000}
+      - MEMBRAIN_DT=${MEMBRAIN_DT:-0.001}
+      - MEMBRAIN_SYNAPSE=${MEMBRAIN_SYNAPSE:-0.01}
+      # Reproducibility
+      - MEMBRAIN_SEED=${MEMBRAIN_SEED:-}
+      # Authentication
+      - MEMBRAIN_AUTH_TOKEN=${MEMBRAIN_AUTH_TOKEN:-}
+      - MEMBRAIN_AUTH_TOKENS=${MEMBRAIN_AUTH_TOKENS:-}
+      # Consolidation
+      - MEMBRAIN_PRUNE_THRESHOLD=${MEMBRAIN_PRUNE_THRESHOLD:-0.1}
+      - MEMBRAIN_NOISE_SCALE=${MEMBRAIN_NOISE_SCALE:-0.05}
+      - MEMBRAIN_MAX_CONSOLIDATION_STEPS=${MEMBRAIN_MAX_CONSOLIDATION_STEPS:-50}
+      - MEMBRAIN_CONVERGENCE_THRESHOLD=${MEMBRAIN_CONVERGENCE_THRESHOLD:-1e-4}
     volumes:
       - membrain_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import grpc; grpc.insecure_channel('localhost:50051').close()"]
+      test: ["CMD", "python", "-m", "membrain.health_check"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
 volumes:
   membrain_data:
