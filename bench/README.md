@@ -25,6 +25,21 @@ python -m bench.smoke_test
 python -m bench.bench_noise --output results/benchmark.csv
 ```
 
+## CLI Reference
+
+The benchmark runner `bench_noise.py` supports the following arguments:
+
+| Argument | Short | Default | Description |
+|----------|-------|---------|-------------|
+| `--output` | `-o` | None | Output CSV file path |
+| `--samples` | `-n` | 100 | Number of vectors to benchmark |
+| `--dim` | `-d` | 128 | Vector dimensionality |
+| `--noise-levels` | | 0.0 0.05... | List of noise levels to test |
+| `--seed` | `-s` | 42 | Random seed for reproducibility |
+| `--methods` | `-m` | All | Specific methods (e.g., `cosine`, `membrain`) |
+| `--skip-membrain` | | False | Skip Membrain server benchmark |
+| `--verbose` | `-v` | False | Enable verbose logging |
+
 ## Structure
 
 ```

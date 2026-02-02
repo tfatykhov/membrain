@@ -24,17 +24,18 @@ def test_hit_at_1(stored_memories, noise_level):
 
 ### B. Baseline Comparators
 
-`bench/baselines.py`:
+`bench/baselines/`:
 
 1. **CosineBaseline** — Simple cosine similarity on raw vectors
-2. **FlyHashJaccardBaseline** — FlyHash + Jaccard (no SNN)
+2. **FAISSFlatBaseline** — FAISS exact search
+3. **MembrainStore** — Membrain SNN via gRPC
 
 ### C. Benchmark Harness
 
 `bench/bench_noise.py`:
 
 ```bash
-python bench/bench_noise.py --output results.csv
+python -m bench.bench_noise --output results.csv
 ```
 
 Outputs:
@@ -53,7 +54,7 @@ Outputs:
 | `tests/integration/__init__.py` | **Create** |
 | `tests/integration/test_noise_robustness.py` | **Create** |
 | `bench/__init__.py` | **Create** |
-| `bench/baselines.py` | **Create** |
+| `bench/baselines/` | **Create** |
 | `bench/bench_noise.py` | **Create** |
 | `bench/README.md` | **Create** |
 
