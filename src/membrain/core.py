@@ -19,6 +19,7 @@ from membrain.logging import get_logger
 
 if TYPE_CHECKING:
     import nengo
+    from membrain.attractor import AttractorMemory
 
 logger = get_logger(__name__)
 
@@ -84,6 +85,9 @@ class BiCameralMemory:
         synapse: float = 0.01,
         dt: float = 0.001,
         seed: int | None = None,
+        use_attractor: bool = False,
+        attractor_learning_rate: float = 0.3,
+        attractor_max_steps: int = 50,
     ) -> None:
         """
         Initialize the BiCameralMemory network.
@@ -95,6 +99,9 @@ class BiCameralMemory:
             synapse: Synaptic time constant in seconds.
             dt: Simulation timestep in seconds.
             seed: Random seed for reproducibility.
+            use_attractor: Enable attractor cleanup during recall.
+            attractor_learning_rate: Hebbian learning rate for attractor.
+            attractor_max_steps: Max dynamics iterations for attractor.
 
         Raises:
             ImportError: If nengo is not installed.
@@ -111,12 +118,24 @@ class BiCameralMemory:
         self.synapse = synapse
         self.dt = dt
         self._seed = seed
+        self.use_attractor = use_attractor
 
         # RNG for stochastic operations (consolidation noise)
         self._rng = np.random.default_rng(seed)
 
         # Memory index: context_id -> MemoryEntry
         self._memory_index: dict[str, MemoryEntry] = {}
+
+        # Attractor memory for pattern cleanup (optional)
+        self._attractor: AttractorMemory | None = None
+        if use_attractor:
+            from membrain.attractor import AttractorMemory
+            self._attractor = AttractorMemory(
+                dimensions=dimensions,
+                learning_rate=attractor_learning_rate,
+                max_steps=attractor_max_steps,
+                seed=seed,
+            )
 
         # Input value (set before simulation)
         self._input_value: NDArray[np.float32] = np.zeros(
@@ -243,6 +262,10 @@ class BiCameralMemory:
             stored_at=self._simulator.time,
         )
 
+        # Also store in attractor if enabled
+        if self._attractor is not None:
+            self._attractor.store(scaled_vector)
+
         # Clear input
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
 
@@ -289,6 +312,18 @@ class BiCameralMemory:
             )
 
         query = query_vector.astype(np.float32).copy()
+
+        # Apply attractor cleanup if enabled
+        if self._attractor is not None and not bypass_snn:
+            cleanup_result = self._attractor.complete(query)
+            query = cleanup_result.cleaned
+            logger.debug(
+                "Attractor cleanup applied",
+                extra={
+                    "steps": cleanup_result.steps,
+                    "converged": cleanup_result.converged,
+                },
+            )
 
         if bypass_snn:
             # Direct cosine similarity (no SNN dynamics)

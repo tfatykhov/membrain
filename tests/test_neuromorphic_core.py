@@ -347,3 +347,40 @@ class TestLearningGate:
         memory.remember("gate-enable-test", vector)
 
         assert memory._learning_gate_value == 0.0
+
+
+class TestAttractorIntegration:
+    """Tests for attractor integration with BiCameralMemory."""
+
+    def test_init_with_attractor(self) -> None:
+        """Should initialize with attractor enabled."""
+        memory = BiCameralMemory(
+            n_neurons=100,
+            dimensions=128,
+            use_attractor=True,
+            seed=42,
+        )
+        assert memory.use_attractor is True
+        assert memory._attractor is not None
+
+    def test_init_without_attractor(self) -> None:
+        """Should initialize without attractor by default."""
+        memory = BiCameralMemory(n_neurons=100, dimensions=128, seed=42)
+        assert memory.use_attractor is False
+        assert memory._attractor is None
+
+    def test_remember_stores_in_attractor(self) -> None:
+        """Remember should store in attractor when enabled."""
+        memory = BiCameralMemory(
+            n_neurons=100,
+            dimensions=128,
+            use_attractor=True,
+            seed=42,
+        )
+        rng = np.random.default_rng(42)
+        vector = rng.standard_normal(128).astype(np.float32)
+
+        memory.remember("test-1", vector, importance=0.8)
+
+        assert memory._attractor is not None
+        assert memory._attractor.pattern_count == 1
