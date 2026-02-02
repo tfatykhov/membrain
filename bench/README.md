@@ -21,8 +21,12 @@ pip install -e ".[bench]"
 # Run smoke test
 python -m bench.smoke_test
 
-# Run benchmark
-python -m bench.bench_noise --output results/benchmark.csv
+# Run benchmark (cosine + FAISS baselines only)
+python -m bench.bench_noise --skip-membrain --dataset clustered -v
+
+# Run full benchmark with Membrain server
+cd docker && docker compose -f docker-compose.bench.yml up -d
+python -m bench.bench_noise --dataset clustered --output results/benchmark.csv
 ```
 
 ## CLI Reference

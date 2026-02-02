@@ -1,0 +1,51 @@
+version: '3.8'
+
+# Lightweight Membrain setup for benchmarking
+# Uses minimal resources suitable for local development or CI
+
+services:
+  membrain:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: membrain:bench
+    container_name: membrain-bench
+    ports:
+      - "${MEMBRAIN_PORT:-50051}:50051"
+    environment:
+      # Server
+      - MEMBRAIN_PORT=50051
+      - MEMBRAIN_MAX_WORKERS=4
+      # Encoder - smaller dims for benchmarking
+      - MEMBRAIN_INPUT_DIM=${MEMBRAIN_INPUT_DIM:-128}
+      - MEMBRAIN_EXPANSION_RATIO=10.0
+      # Neural Network - minimal for fast iteration
+      - MEMBRAIN_N_NEURONS=${MEMBRAIN_N_NEURONS:-500}
+      - MEMBRAIN_DT=0.001
+      - MEMBRAIN_SYNAPSE=0.01
+      # Reproducibility
+      - MEMBRAIN_SEED=42
+      # No auth for local benchmarking
+      - MEMBRAIN_AUTH_TOKEN=
+      # Consolidation
+      - MEMBRAIN_PRUNE_THRESHOLD=0.1
+      - MEMBRAIN_NOISE_SCALE=0.05
+      - MEMBRAIN_MAX_CONSOLIDATION_STEPS=50
+      # Logging
+      - MEMBRAIN_LOG_LEVEL=INFO
+      - MEMBRAIN_LOG_FORMAT=text
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+        reservations:
+          cpus: '1'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-m", "membrain.health_check"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: "no"
