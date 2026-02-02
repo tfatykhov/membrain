@@ -48,7 +48,7 @@ class MembrainStore:
         host: str = "localhost",
         port: int = 50051,
         api_key: str | None = None,
-        timeout_s: float = 5.0,
+        timeout_s: float = 30.0,
         max_workers: int = 4,
     ) -> None:
         """Initialize connection to Membrain server.
@@ -239,9 +239,10 @@ class MembrainStore:
         normalized = vector / norm
         
         # Create QueryPacket
+        # Note: threshold=0 is treated as "use default" by server, use 0.01 for "all matches"
         query = memory_a2a_pb2.QueryPacket(
             vector=normalized.astype(np.float32).tolist(),
-            threshold=0.0,  # Return all matches
+            threshold=0.01,  # Near-zero to get all matches (0 means "use server default")
             max_results=k,
         )
         
