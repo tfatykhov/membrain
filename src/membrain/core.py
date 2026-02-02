@@ -9,7 +9,6 @@ Reference: PRD Feature 03 - Neuromorphic Core
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
