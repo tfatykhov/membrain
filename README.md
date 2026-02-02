@@ -232,6 +232,52 @@ mypy src/
 ruff format src/
 ```
 
+## Benchmarking
+
+Membrain includes a benchmark suite to measure noise robustness against baseline vector stores.
+
+### Quick Start
+
+```bash
+# Install benchmark dependencies
+pip install -e ".[bench]"
+
+# Run benchmark
+python -m bench.bench_noise --output results/benchmark.csv
+```
+
+### Included Baselines
+
+| Baseline | Description |
+|----------|-------------|
+| `CosineBaseline` | Naive brute-force cosine similarity |
+| `FAISSFlatBaseline` | FAISS exact search (IndexFlatIP) |
+| `FAISSIVFBaseline` | FAISS approximate search (IVF) |
+| `MembrainStore` | Membrain SNN via gRPC |
+
+### Usage
+
+```python
+from bench.baselines import CosineBaseline, MembrainStore
+from bench.datasets import SyntheticDataset, add_noise
+
+# Generate test data
+dataset = SyntheticDataset.gaussian(n=1000, dim=768, seed=42)
+
+# Compare baselines
+for Store in [CosineBaseline, MembrainStore]:
+    store = Store() if Store != MembrainStore else Store(host="localhost")
+    for key, vec in dataset:
+        store.store(key, vec)
+    
+    # Query with noise
+    rng = np.random.default_rng(42)
+    noisy = add_noise(dataset.vectors[0], level=0.2, rng=rng)
+    results = store.query(noisy, k=5)
+```
+
+See [bench/README.md](bench/README.md) for full documentation.
+
 ## Project Structure
 
 ```
