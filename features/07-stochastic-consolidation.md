@@ -1,4 +1,4 @@
-# Feature 08 — Stochastic Consolidation & Attractor Settling
+# Feature 07 — Stochastic Consolidation & Attractor Settling
 
 ## Status: ✅ Complete (v0.3.0)
 

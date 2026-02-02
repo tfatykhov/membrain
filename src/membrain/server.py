@@ -27,6 +27,8 @@ import numpy as np
 from membrain.config import MembrainConfig
 from membrain.core import BiCameralMemory
 from membrain.encoder import FlyHash
+from membrain.interceptors import LoggingInterceptor
+from membrain.logging import get_logger, setup_logging
 from membrain.proto import memory_a2a_pb2, memory_a2a_pb2_grpc
 
 # Security constants
@@ -43,7 +45,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def validate_token(token: str) -> tuple[bool, str | None]:
@@ -507,7 +509,7 @@ class MembrainServer:
     def start(self) -> None:
         """Start the gRPC server."""
         # Build interceptors list
-        interceptors = []
+        interceptors: list[grpc.ServerInterceptor] = [LoggingInterceptor()]
         if self.config.auth_tokens:
             # Validate all tokens
             for token in self.config.auth_tokens:
@@ -583,6 +585,14 @@ def serve(config: MembrainConfig | None = None) -> None:
 
     # Validate configuration
     config.validate()
+
+    # Set up structured logging
+    setup_logging(
+        level=config.log_level,
+        log_format=config.log_format,
+        log_file=config.log_file,
+        include_trace=config.log_include_trace,
+    )
 
     # Log resolved config
     config.log_config(logger)

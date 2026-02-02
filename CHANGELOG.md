@@ -2,6 +2,14 @@
 
 All notable changes to Membrain will be documented in this file.
 
+## [0.4.0] - 2026-02-02
+
+### Added
+- **Feature 10**: Structured JSON logging with request correlation and performance metrics
+- Configuration parameters for logging: `MEMBRAIN_LOG_LEVEL`, `MEMBRAIN_LOG_FORMAT`, `MEMBRAIN_LOG_FILE`, `MEMBRAIN_LOG_INCLUDE_TRACE`
+- Request ID and Session ID tracking across gRPC calls
+- `JSONFormatter` for production-grade observability
+
 ## [0.3.0] - 2026-02-02
 
 ### Changed

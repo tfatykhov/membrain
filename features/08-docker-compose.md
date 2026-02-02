@@ -1,4 +1,4 @@
-# PR-007 — Docker Compose / One-Command Run
+# Feature 08 — Docker Compose / One-Command Run
 
 ## Status: ✅ Complete
 

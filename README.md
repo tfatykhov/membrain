@@ -147,6 +147,10 @@ Membrain is configured via environment variables. All have sensible defaults.
 | `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling |
 | `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State diff to consider settled |
 | `MEMBRAIN_HEALTH_TIMEOUT` | float | 5.0 | Healthcheck timeout in seconds |
+| `MEMBRAIN_LOG_LEVEL` | string | INFO | Minimum log level (DEBUG, INFO, etc.) |
+| `MEMBRAIN_LOG_FORMAT` | string | json | Log format (json or text) |
+| `MEMBRAIN_LOG_FILE` | string | None | Optional file path for logs |
+| `MEMBRAIN_LOG_INCLUDE_TRACE` | bool | false | Include stack traces in logs |
 
 ### Example Docker Configuration
 

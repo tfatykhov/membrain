@@ -23,6 +23,10 @@ All configuration is loaded from environment variables with sensible defaults.
 | `MEMBRAIN_NOISE_SCALE` | float | 0.05 | Gaussian noise std for stochastic consolidation. |
 | `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling. |
 | `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State difference to consider settled. |
+| `MEMBRAIN_LOG_LEVEL` | string | INFO | Minimum log level. |
+| `MEMBRAIN_LOG_FORMAT` | string | json | Log format (json or text). |
+| `MEMBRAIN_LOG_FILE` | string | None | Optional file path for logs. |
+| `MEMBRAIN_LOG_INCLUDE_TRACE` | bool | false | Include stack traces in logs. |
 
 ## Programmatic Configuration
 
@@ -51,3 +55,23 @@ The stochastic consolidation process is controlled by three key parameters:
 
 - **`MEMBRAIN_CONVERGENCE_THRESHOLD`**: How stable the state must be to be considered "settled".
   - Smaller values (e.g., 1e-5) require stricter stability.
+
+## Logging Configuration
+
+Structured logging is enabled by default to facilitate observability and debugging.
+
+- **`MEMBRAIN_LOG_LEVEL`**: Controls the verbosity of logs.
+  - Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.
+  - Default: `INFO`.
+
+- **`MEMBRAIN_LOG_FORMAT`**: Determines the output format.
+  - `json`: Structured JSON output, ideal for production monitoring and log aggregation systems (e.g., Datadog, ELK).
+  - `text`: Human-readable text format, suitable for local development and testing.
+
+- **`MEMBRAIN_LOG_FILE`**:
+  - If set, logs are written to the specified file path.
+  - If unset (default), logs are written to standard output (stdout).
+
+- **`MEMBRAIN_LOG_INCLUDE_TRACE`**:
+  - If `true`, full stack traces are included in error logs for detailed debugging.
+  - Default: `false`.
