@@ -11,8 +11,8 @@ service MemoryUnit {
   // Query for associated memories via pattern completion
   rpc Recall (QueryPacket) returns (ContextResponse) {}
 
-  // Trigger sleep phase for memory consolidation
-  rpc Consolidate (SleepSignal) returns (Ack) {}
+  // Trigger sleep phase for memory consolidation (attractor dynamics)
+  rpc Consolidate (SleepSignal) returns (ConsolidateResponse) {}
   
   // Health check
   rpc Ping (Empty) returns (Ack) {}
@@ -42,8 +42,19 @@ message ContextResponse {
 
 // Signal to trigger memory consolidation (sleep phase)
 message SleepSignal {
-  int32 duration_ms = 1;      // Duration of consolidation in milliseconds
-  bool prune_weak = 2;        // Whether to prune weak associations
+  float noise_scale = 1;           // Gaussian noise std for attractor dynamics (default: 0.05)
+  int32 max_steps = 2;             // Max iterations for settling (default: 50)
+  float convergence_threshold = 3; // State diff to consider settled (default: 1e-4)
+  bool prune_weak = 4;             // Whether to prune weak associations
+  float prune_threshold = 5;       // Importance threshold for pruning (default: 0.1)
+}
+
+// Response from consolidation
+message ConsolidateResponse {
+  bool success = 1;
+  int32 steps_to_converge = 2;  // Steps taken to converge (-1 if max reached)
+  int32 pruned_count = 3;       // Number of memories pruned
+  string message = 4;
 }
 
 // Acknowledgment message

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10memory_a2a.proto\x12\rmemory_bridge\"\xb4\x01\n\x0cMemoryPacket\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0e\n\x06vector\x18\x02 \x03(\x02\x12\x12\n\nimportance\x18\x03 \x01(\x02\x12;\n\x08metadata\x18\x04 \x03(\x0b\x32).memory_bridge.MemoryPacket.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"E\n\x0bQueryPacket\x12\x0e\n\x06vector\x18\x01 \x03(\x02\x12\x11\n\tthreshold\x18\x02 \x01(\x02\x12\x13\n\x0bmax_results\x18\x03 \x01(\x05\"W\n\x0f\x43ontextResponse\x12\x13\n\x0b\x63ontext_ids\x18\x01 \x03(\t\x12\x13\n\x0b\x63onfidences\x18\x02 \x03(\x02\x12\x1a\n\x12overall_confidence\x18\x03 \x01(\x02\"6\n\x0bSleepSignal\x12\x13\n\x0b\x64uration_ms\x18\x01 \x01(\x05\x12\x12\n\nprune_weak\x18\x02 \x01(\x08\"\'\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x07\n\x05\x45mpty2\x88\x02\n\nMemoryUnit\x12=\n\x08Remember\x12\x1b.memory_bridge.MemoryPacket\x1a\x12.memory_bridge.Ack\"\x00\x12\x46\n\x06Recall\x12\x1a.memory_bridge.QueryPacket\x1a\x1e.memory_bridge.ContextResponse\"\x00\x12?\n\x0b\x43onsolidate\x12\x1a.memory_bridge.SleepSignal\x1a\x12.memory_bridge.Ack\"\x00\x12\x32\n\x04Ping\x12\x14.memory_bridge.Empty\x1a\x12.memory_bridge.Ack\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10memory_a2a.proto\x12\rmemory_bridge\"\xb4\x01\n\x0cMemoryPacket\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0e\n\x06vector\x18\x02 \x03(\x02\x12\x12\n\nimportance\x18\x03 \x01(\x02\x12;\n\x08metadata\x18\x04 \x03(\x0b\x32).memory_bridge.MemoryPacket.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"E\n\x0bQueryPacket\x12\x0e\n\x06vector\x18\x01 \x03(\x02\x12\x11\n\tthreshold\x18\x02 \x01(\x02\x12\x13\n\x0bmax_results\x18\x03 \x01(\x05\"W\n\x0f\x43ontextResponse\x12\x13\n\x0b\x63ontext_ids\x18\x01 \x03(\t\x12\x13\n\x0b\x63onfidences\x18\x02 \x03(\x02\x12\x1a\n\x12overall_confidence\x18\x03 \x01(\x02\"\x81\x01\n\x0bSleepSignal\x12\x13\n\x0bnoise_scale\x18\x01 \x01(\x02\x12\x11\n\tmax_steps\x18\x02 \x01(\x05\x12\x1d\n\x15\x63onvergence_threshold\x18\x03 \x01(\x02\x12\x12\n\nprune_weak\x18\x04 \x01(\x08\x12\x17\n\x0fprune_threshold\x18\x05 \x01(\x02\"h\n\x13\x43onsolidateResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x19\n\x11steps_to_converge\x18\x02 \x01(\x05\x12\x14\n\x0cpruned_count\x18\x03 \x01(\x05\x12\x0f\n\x07message\x18\x04 \x01(\t\"\'\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x07\n\x05\x45mpty2\x98\x02\n\nMemoryUnit\x12=\n\x08Remember\x12\x1b.memory_bridge.MemoryPacket\x1a\x12.memory_bridge.Ack\"\x00\x12\x46\n\x06Recall\x12\x1a.memory_bridge.QueryPacket\x1a\x1e.memory_bridge.ContextResponse\"\x00\x12O\n\x0b\x43onsolidate\x12\x1a.memory_bridge.SleepSignal\x1a\".memory_bridge.ConsolidateResponse\"\x00\x12\x32\n\x04Ping\x12\x14.memory_bridge.Empty\x1a\x12.memory_bridge.Ack\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -41,12 +41,14 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_QUERYPACKET']._serialized_end=287
   _globals['_CONTEXTRESPONSE']._serialized_start=289
   _globals['_CONTEXTRESPONSE']._serialized_end=376
-  _globals['_SLEEPSIGNAL']._serialized_start=378
-  _globals['_SLEEPSIGNAL']._serialized_end=432
-  _globals['_ACK']._serialized_start=434
-  _globals['_ACK']._serialized_end=473
-  _globals['_EMPTY']._serialized_start=475
-  _globals['_EMPTY']._serialized_end=482
-  _globals['_MEMORYUNIT']._serialized_start=485
-  _globals['_MEMORYUNIT']._serialized_end=749
+  _globals['_SLEEPSIGNAL']._serialized_start=379
+  _globals['_SLEEPSIGNAL']._serialized_end=508
+  _globals['_CONSOLIDATERESPONSE']._serialized_start=510
+  _globals['_CONSOLIDATERESPONSE']._serialized_end=614
+  _globals['_ACK']._serialized_start=616
+  _globals['_ACK']._serialized_end=655
+  _globals['_EMPTY']._serialized_start=657
+  _globals['_EMPTY']._serialized_end=664
+  _globals['_MEMORYUNIT']._serialized_start=667
+  _globals['_MEMORYUNIT']._serialized_end=947
 # @@protoc_insertion_point(module_scope)

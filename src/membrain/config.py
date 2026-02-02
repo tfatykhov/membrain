@@ -61,6 +61,9 @@ class MembrainConfig:
 
     # Consolidation
     prune_threshold: float = 0.1  # Importance threshold for pruning weak memories
+    noise_scale: float = 0.05  # Gaussian noise std for stochastic consolidation
+    max_consolidation_steps: int = 50  # Max iterations for attractor settling
+    convergence_threshold: float = 1e-4  # State difference to consider settled
 
     @classmethod
     def from_env(cls) -> "MembrainConfig":
@@ -79,6 +82,9 @@ class MembrainConfig:
             MEMBRAIN_AUTH_TOKEN: Single auth token (legacy)
             MEMBRAIN_AUTH_TOKENS: Comma-separated auth tokens
             MEMBRAIN_PRUNE_THRESHOLD: Importance threshold for pruning (default: 0.1)
+            MEMBRAIN_NOISE_SCALE: Gaussian noise std for consolidation (default: 0.05)
+            MEMBRAIN_MAX_CONSOLIDATION_STEPS: Max iterations for settling (default: 50)
+            MEMBRAIN_CONVERGENCE_THRESHOLD: State diff to consider settled (default: 1e-4)
         """
         # Parse auth tokens (support both single and multi-token formats)
         tokens = _parse_token_list(os.environ.get("MEMBRAIN_AUTH_TOKENS"))
@@ -98,6 +104,9 @@ class MembrainConfig:
             seed=_parse_optional_int(os.environ.get("MEMBRAIN_SEED")),
             auth_tokens=tokens,
             prune_threshold=float(os.environ.get("MEMBRAIN_PRUNE_THRESHOLD", 0.1)),
+            noise_scale=float(os.environ.get("MEMBRAIN_NOISE_SCALE", 0.05)),
+            max_consolidation_steps=int(os.environ.get("MEMBRAIN_MAX_CONSOLIDATION_STEPS", 50)),
+            convergence_threshold=float(os.environ.get("MEMBRAIN_CONVERGENCE_THRESHOLD", 1e-4)),
         )
 
     @classmethod
@@ -118,6 +127,9 @@ class MembrainConfig:
             seed=42,
             auth_tokens=["test-token-for-ci"],
             prune_threshold=0.1,
+            noise_scale=0.05,
+            max_consolidation_steps=10,  # Faster for testing
+            convergence_threshold=1e-3,  # Looser for testing
         )
 
     def validate(self) -> None:
@@ -157,6 +169,19 @@ class MembrainConfig:
                 f"prune_threshold must be 0.0-1.0, got {self.prune_threshold}"
             )
 
+        if self.noise_scale < 0:
+            raise ValueError(f"noise_scale must be >= 0, got {self.noise_scale}")
+
+        if self.max_consolidation_steps < 1:
+            raise ValueError(
+                f"max_consolidation_steps must be positive, got {self.max_consolidation_steps}"
+            )
+
+        if self.convergence_threshold <= 0:
+            raise ValueError(
+                f"convergence_threshold must be positive, got {self.convergence_threshold}"
+            )
+
         # Validate auth tokens (if any are provided)
         for token in self.auth_tokens:
             if len(token) < 16:
@@ -176,3 +201,6 @@ class MembrainConfig:
         logger.info(f"  seed: {self.seed or 'random'}")
         logger.info(f"  auth_tokens: {len(self.auth_tokens)} configured")
         logger.info(f"  prune_threshold: {self.prune_threshold}")
+        logger.info(f"  noise_scale: {self.noise_scale}")
+        logger.info(f"  max_consolidation_steps: {self.max_consolidation_steps}")
+        logger.info(f"  convergence_threshold: {self.convergence_threshold}")

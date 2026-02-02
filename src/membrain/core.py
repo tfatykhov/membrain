@@ -79,6 +79,7 @@ class BiCameralMemory:
         learning_rate: float = 1e-2,
         synapse: float = 0.01,
         dt: float = 0.001,
+        seed: int | None = None,
     ) -> None:
         """
         Initialize the BiCameralMemory network.
@@ -89,6 +90,7 @@ class BiCameralMemory:
             learning_rate: Base Voja learning rate.
             synapse: Synaptic time constant in seconds.
             dt: Simulation timestep in seconds.
+            seed: Random seed for reproducibility.
 
         Raises:
             ImportError: If nengo is not installed.
@@ -104,6 +106,10 @@ class BiCameralMemory:
         self.learning_rate = learning_rate
         self.synapse = synapse
         self.dt = dt
+        self._seed = seed
+
+        # RNG for stochastic operations (consolidation noise)
+        self._rng = np.random.default_rng(seed)
 
         # Memory index: context_id -> MemoryEntry
         self._memory_index: dict[str, MemoryEntry] = {}
@@ -301,29 +307,79 @@ class BiCameralMemory:
 
     def consolidate(
         self,
-        duration_ms: int = DEFAULT_CONSOLIDATE_DURATION_MS,
+        noise_scale: float = 0.05,
+        max_steps: int = 50,
+        convergence_threshold: float = 1e-4,
         prune_weak: bool = False,
         prune_threshold: float = 0.1,
-    ) -> int:
+    ) -> tuple[int, int]:
         """
-        Run consolidation phase (sleep).
+        Run stochastic consolidation phase (attractor dynamics).
+
+        Injects Gaussian white noise into the network state, then iterates
+        recurrent dynamics until the system settles into an attractor state.
+        This mimics biological hippocampal consolidation during sleep.
 
         Args:
-            duration_ms: Duration of consolidation in milliseconds.
-            prune_weak: Whether to prune weak associations.
+            noise_scale: Standard deviation of Gaussian noise injected.
+                        Essential for escaping local minima.
+            max_steps: Maximum recurrent cycles allowed for settling.
+            convergence_threshold: State difference magnitude to consider 'settled'.
+            prune_weak: Whether to prune weak associations after settling.
             prune_threshold: Importance threshold for pruning.
 
         Returns:
-            Number of memories pruned (if prune_weak=True).
+            Tuple of (steps_to_converge, pruned_count).
+            steps_to_converge is -1 if max_steps reached without convergence.
         """
         if self._simulator is None:
-            return 0
+            self._ensure_simulator()
 
-        # Run with no input (let network settle)
+        assert self._simulator is not None
+
+        # Get current state from output probe
+        output_data = self._simulator.data[self.output_probe]
+        if len(output_data) == 0:
+            # No prior simulation, start with zeros
+            current_state = np.zeros(self.dimensions, dtype=np.float32)
+        else:
+            current_state = output_data[-1].astype(np.float32)
+
+        # Inject Gaussian white noise (the "kick" to escape local minima)
+        # Instance RNG ensures different noise each call (seeded for reproducibility)
+        noise = self._rng.normal(0, noise_scale, current_state.shape).astype(np.float32)
+        perturbed_state = current_state + noise
+
+        # Set perturbed state as input and disable learning during consolidation
+        self._input_value = perturbed_state
+        self._learning_gate_value = -1.0  # Disable learning (Voja: -1 = no learn)
+
+        steps_to_converge = -1
+
+        # Iterative settling (attractor dynamics)
+        for step in range(max_steps):
+            # Run one simulation step
+            self._simulator.run_steps(1)
+
+            # Get new state
+            new_output = self._simulator.data[self.output_probe]
+            new_state = new_output[-1].astype(np.float32)
+
+            # Check for convergence (did we find the attractor?)
+            diff = float(np.linalg.norm(new_state - perturbed_state))
+            if diff < convergence_threshold:
+                steps_to_converge = step + 1
+                break
+
+            # Update for next iteration (no external input, only recurrent)
+            perturbed_state = new_state
+            self._input_value = np.zeros(self.dimensions, dtype=np.float32)
+
+        # Re-enable learning and clear input
+        self._learning_gate_value = 0.0
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
-        steps = max(1, int(duration_ms / (self.dt * 1000)))
-        self._simulator.run_steps(steps)
 
+        # Prune weak memories if requested
         pruned_count = 0
         if prune_weak:
             to_remove = [
@@ -335,7 +391,7 @@ class BiCameralMemory:
                 del self._memory_index[cid]
                 pruned_count += 1
 
-        return pruned_count
+        return (steps_to_converge, pruned_count)
 
     def get_sparsity_rate(self) -> float:
         """

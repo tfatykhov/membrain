@@ -2,6 +2,20 @@
 
 All notable changes to Membrain will be documented in this file.
 
+## [0.3.0] - 2026-02-02
+
+### Changed
+- **BREAKING**: `consolidate()` now returns `tuple[int, int]` (steps_to_converge, pruned_count)
+- **BREAKING**: `SleepSignal` proto message redesigned for stochastic consolidation
+- **BREAKING**: `Consolidate` RPC now returns `ConsolidateResponse` instead of `Ack`
+
+### Added
+- Stochastic consolidation with Gaussian white noise injection (attractor dynamics)
+- Convergence detection loop (settles when state difference < threshold)
+- New config params: `noise_scale`, `max_consolidation_steps`, `convergence_threshold`
+- `seed` parameter in `BiCameralMemory` for reproducible consolidation
+- 8 new consolidation tests covering noise resilience and spurious state rejection
+
 ## [0.2.0] - 2026-02-02
 
 ### Changed

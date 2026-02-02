@@ -222,7 +222,9 @@ class TestConsolidate:
     def test_consolidate_runs(self, servicer: MemoryUnitServicer) -> None:
         """Consolidate should complete successfully."""
         request = memory_a2a_pb2.SleepSignal(
-            duration_ms=10,
+            noise_scale=0.05,
+            max_steps=10,
+            convergence_threshold=1e-3,
             prune_weak=False,
         )
         context = MagicMock()
@@ -230,7 +232,8 @@ class TestConsolidate:
         response = servicer.Consolidate(request, context)
 
         assert response.success is True
-        assert "10ms" in response.message
+        # Either converged or hit max steps
+        assert response.steps_to_converge == -1 or response.steps_to_converge > 0
 
     def test_consolidate_with_pruning(self, servicer: MemoryUnitServicer) -> None:
         """Consolidate with pruning should report pruned count."""
@@ -244,15 +247,18 @@ class TestConsolidate:
         servicer.Remember(remember_request, MagicMock())
 
         request = memory_a2a_pb2.SleepSignal(
-            duration_ms=10,
+            noise_scale=0.05,
+            max_steps=10,
+            convergence_threshold=1e-3,
             prune_weak=True,
+            prune_threshold=0.1,
         )
         context = MagicMock()
 
         response = servicer.Consolidate(request, context)
 
         assert response.success is True
-        assert "pruned" in response.message.lower()
+        assert response.pruned_count >= 1
 
 
 class TestServerLifecycle:

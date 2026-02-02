@@ -255,14 +255,15 @@ class TestConsolidation:
 
     def test_consolidation_runs(self, memory: BiCameralMemory) -> None:
         """Consolidation should run without error."""
-        pruned = memory.consolidate(duration_ms=100)
+        steps, pruned = memory.consolidate(max_steps=10)
         assert pruned == 0  # No pruning by default
+        assert steps == -1 or steps > 0  # Either converged or hit max
 
     def test_consolidation_prunes_weak(self, memory: BiCameralMemory) -> None:
         """Consolidation should prune weak memories."""
         initial_count = memory.get_memory_count()
 
-        pruned = memory.consolidate(prune_weak=True, prune_threshold=0.1)
+        steps, pruned = memory.consolidate(prune_weak=True, prune_threshold=0.1, max_steps=10)
 
         assert pruned == 1  # One memory has importance 0.05 < 0.1
         assert memory.get_memory_count() == initial_count - 1

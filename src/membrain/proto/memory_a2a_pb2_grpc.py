@@ -49,7 +49,7 @@ class MemoryUnitStub(object):
         self.Consolidate = channel.unary_unary(
                 '/memory_bridge.MemoryUnit/Consolidate',
                 request_serializer=memory__a2a__pb2.SleepSignal.SerializeToString,
-                response_deserializer=memory__a2a__pb2.Ack.FromString,
+                response_deserializer=memory__a2a__pb2.ConsolidateResponse.FromString,
                 _registered_method=True)
         self.Ping = channel.unary_unary(
                 '/memory_bridge.MemoryUnit/Ping',
@@ -78,7 +78,7 @@ class MemoryUnitServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Consolidate(self, request, context):
-        """Trigger sleep phase for memory consolidation
+        """Trigger sleep phase for memory consolidation (attractor dynamics)
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -107,7 +107,7 @@ def add_MemoryUnitServicer_to_server(servicer, server):
             'Consolidate': grpc.unary_unary_rpc_method_handler(
                     servicer.Consolidate,
                     request_deserializer=memory__a2a__pb2.SleepSignal.FromString,
-                    response_serializer=memory__a2a__pb2.Ack.SerializeToString,
+                    response_serializer=memory__a2a__pb2.ConsolidateResponse.SerializeToString,
             ),
             'Ping': grpc.unary_unary_rpc_method_handler(
                     servicer.Ping,
@@ -197,7 +197,7 @@ class MemoryUnit(object):
             target,
             '/memory_bridge.MemoryUnit/Consolidate',
             memory__a2a__pb2.SleepSignal.SerializeToString,
-            memory__a2a__pb2.Ack.FromString,
+            memory__a2a__pb2.ConsolidateResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -113,6 +113,10 @@ Membrain is configured via environment variables. All have sensible defaults.
 | `MEMBRAIN_SEED` | int | None | Random seed for reproducibility |
 | `MEMBRAIN_AUTH_TOKEN` | string | None | Single bearer token |
 | `MEMBRAIN_AUTH_TOKENS` | string | None | Comma-separated tokens for multi-client |
+| `MEMBRAIN_PRUNE_THRESHOLD` | float | 0.1 | Importance threshold for pruning |
+| `MEMBRAIN_NOISE_SCALE` | float | 0.05 | Gaussian noise std for consolidation |
+| `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling |
+| `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State diff to consider settled |
 
 ### Example Docker Configuration
 
