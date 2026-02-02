@@ -65,6 +65,12 @@ class MembrainConfig:
     max_consolidation_steps: int = 50  # Max iterations for attractor settling
     convergence_threshold: float = 1e-4  # State difference to consider settled
 
+    # Logging
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    log_format: str = "json"  # json or text
+    log_file: str | None = None  # Optional file path
+    log_include_trace: bool = False  # Include stack traces in error logs
+
     @classmethod
     def from_env(cls) -> "MembrainConfig":
         """Load configuration from environment variables.
@@ -85,6 +91,10 @@ class MembrainConfig:
             MEMBRAIN_NOISE_SCALE: Gaussian noise std for consolidation (default: 0.05)
             MEMBRAIN_MAX_CONSOLIDATION_STEPS: Max iterations for settling (default: 50)
             MEMBRAIN_CONVERGENCE_THRESHOLD: State diff to consider settled (default: 1e-4)
+            MEMBRAIN_LOG_LEVEL: Minimum log level (default: INFO)
+            MEMBRAIN_LOG_FORMAT: Log format, 'json' or 'text' (default: json)
+            MEMBRAIN_LOG_FILE: Optional log file path (default: None)
+            MEMBRAIN_LOG_INCLUDE_TRACE: Include stack traces (default: false)
         """
         # Parse auth tokens (support both single and multi-token formats)
         tokens = _parse_token_list(os.environ.get("MEMBRAIN_AUTH_TOKENS"))
@@ -107,6 +117,10 @@ class MembrainConfig:
             noise_scale=float(os.environ.get("MEMBRAIN_NOISE_SCALE", 0.05)),
             max_consolidation_steps=int(os.environ.get("MEMBRAIN_MAX_CONSOLIDATION_STEPS", 50)),
             convergence_threshold=float(os.environ.get("MEMBRAIN_CONVERGENCE_THRESHOLD", 1e-4)),
+            log_level=os.environ.get("MEMBRAIN_LOG_LEVEL", "INFO"),
+            log_format=os.environ.get("MEMBRAIN_LOG_FORMAT", "json"),
+            log_file=os.environ.get("MEMBRAIN_LOG_FILE") or None,
+            log_include_trace=os.environ.get("MEMBRAIN_LOG_INCLUDE_TRACE", "").lower() in ("true", "1", "yes"),
         )
 
     @classmethod
@@ -130,6 +144,10 @@ class MembrainConfig:
             noise_scale=0.05,
             max_consolidation_steps=10,  # Faster for testing
             convergence_threshold=1e-3,  # Looser for testing
+            log_level="DEBUG",
+            log_format="text",  # Human-readable for tests
+            log_file=None,
+            log_include_trace=True,
         )
 
     def validate(self) -> None:
@@ -182,6 +200,18 @@ class MembrainConfig:
                 f"convergence_threshold must be positive, got {self.convergence_threshold}"
             )
 
+        # Validate logging config
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if self.log_level.upper() not in valid_levels:
+            raise ValueError(
+                f"log_level must be one of {valid_levels}, got {self.log_level}"
+            )
+
+        if self.log_format.lower() not in ("json", "text"):
+            raise ValueError(
+                f"log_format must be 'json' or 'text', got {self.log_format}"
+            )
+
         # Validate auth tokens (if any are provided)
         for token in self.auth_tokens:
             if len(token) < 16:
@@ -204,3 +234,6 @@ class MembrainConfig:
         logger.info(f"  noise_scale: {self.noise_scale}")
         logger.info(f"  max_consolidation_steps: {self.max_consolidation_steps}")
         logger.info(f"  convergence_threshold: {self.convergence_threshold}")
+        logger.info(f"  log_level: {self.log_level}")
+        logger.info(f"  log_format: {self.log_format}")
+        logger.info(f"  log_file: {self.log_file or 'stdout'}")
