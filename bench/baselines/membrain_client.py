@@ -41,6 +41,7 @@ class MembrainStore:
         host: Membrain server hostname
         port: Membrain server port
         api_key: Optional API key for authentication
+        bypass_snn: If True, skip SNN dynamics and use direct cosine similarity
     """
     
     def __init__(
@@ -50,6 +51,7 @@ class MembrainStore:
         api_key: str | None = None,
         timeout_s: float = 30.0,
         max_workers: int = 4,
+        bypass_snn: bool = False,
     ) -> None:
         """Initialize connection to Membrain server.
         
@@ -59,12 +61,14 @@ class MembrainStore:
             api_key: API key for authentication (if server requires it)
             timeout_s: RPC timeout in seconds
             max_workers: Max threads for parallel batch operations
+            bypass_snn: Skip SNN dynamics, use direct cosine similarity
         """
         self._host = host
         self._port = port
         self._api_key = api_key
         self._timeout = timeout_s
         self._max_workers = max_workers
+        self._bypass_snn = bypass_snn
         
         # Warn about insecure channel with API key on non-localhost
         if api_key and host not in ("localhost", "127.0.0.1", "::1"):
@@ -244,6 +248,7 @@ class MembrainStore:
             vector=normalized.astype(np.float32).tolist(),
             threshold=0.01,  # Near-zero to get all matches (0 means "use server default")
             max_results=k,
+            bypass_snn=self._bypass_snn,
         )
         
         response = self._call_with_auth(stub.Recall, query)

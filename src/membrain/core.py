@@ -263,6 +263,7 @@ class BiCameralMemory:
         threshold: float = 0.7,
         max_results: int = 5,
         duration_ms: int = DEFAULT_RECALL_DURATION_MS,
+        bypass_snn: bool = False,
     ) -> list[RecallResult]:
         """
         Recall memories via pattern completion.
@@ -272,6 +273,8 @@ class BiCameralMemory:
             threshold: Minimum similarity threshold.
             max_results: Maximum number of results.
             duration_ms: Simulation duration in milliseconds.
+            bypass_snn: If True, skip SNN and use direct cosine similarity.
+                       Useful for benchmarking baseline before attractor dynamics.
 
         Returns:
             List of RecallResult with context_id and confidence.
@@ -279,38 +282,46 @@ class BiCameralMemory:
         Raises:
             ValueError: If query_vector has wrong shape.
         """
-        self._ensure_simulator()
-        assert self._simulator is not None
-
         # Validate input
         if query_vector.shape != (self.dimensions,):
             raise ValueError(
                 f"Expected shape ({self.dimensions},), got {query_vector.shape}"
             )
 
-        # Disable learning during recall via gate (-1.0 = no learning)
-        self._learning_gate_value = -1.0
+        query = query_vector.astype(np.float32).copy()
 
-        # Inject query
-        self._input_value = query_vector.astype(np.float32).copy()
+        if bypass_snn:
+            # Direct cosine similarity (no SNN dynamics)
+            # This is the baseline before attractor dynamics are implemented
+            comparison_vector = query
+        else:
+            # Full SNN path
+            self._ensure_simulator()
+            assert self._simulator is not None
 
-        steps = max(1, int(duration_ms / (self.dt * 1000)))
-        self._simulator.run_steps(steps)
+            # Disable learning during recall via gate (-1.0 = no learning)
+            self._learning_gate_value = -1.0
 
-        # Re-enable learning (0.0 = normal learning)
-        self._learning_gate_value = 0.0
+            # Inject query
+            self._input_value = query
 
-        # Read output probe (attractor state)
-        output_data = self._simulator.data[self.output_probe]
-        attractor_state = output_data[-1]  # Last timestep
+            steps = max(1, int(duration_ms / (self.dt * 1000)))
+            self._simulator.run_steps(steps)
 
-        # Clear input
-        self._input_value = np.zeros(self.dimensions, dtype=np.float32)
+            # Re-enable learning (0.0 = normal learning)
+            self._learning_gate_value = 0.0
+
+            # Read output probe (attractor state)
+            output_data = self._simulator.data[self.output_probe]
+            comparison_vector = output_data[-1]  # Last timestep
+
+            # Clear input
+            self._input_value = np.zeros(self.dimensions, dtype=np.float32)
 
         # Match against stored memories
         results: list[RecallResult] = []
         for entry in self._memory_index.values():
-            similarity = self._compute_similarity(attractor_state, entry.sparse_vector)
+            similarity = self._compute_similarity(comparison_vector, entry.sparse_vector)
             if similarity >= threshold:
                 results.append(RecallResult(entry.context_id, similarity))
 
@@ -324,6 +335,7 @@ class BiCameralMemory:
                 "matches": len(final_results),
                 "threshold": threshold,
                 "memory_count": len(self._memory_index),
+                "bypass_snn": bypass_snn,
             },
         )
 

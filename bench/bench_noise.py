@@ -190,6 +190,7 @@ def run_benchmarks(
     methods: list[str] | None = None,
     skip_membrain: bool = False,
     dataset_type: str = DEFAULT_DATASET,
+    bypass_snn: bool = False,
 ) -> list[BenchmarkResult]:
     """Run full benchmark suite across all stores and noise levels.
     
@@ -201,6 +202,7 @@ def run_benchmarks(
         methods: Filter to specific methods (None = all available)
         skip_membrain: Skip Membrain even if available
         dataset_type: Type of dataset ("gaussian" or "clustered")
+        bypass_snn: For Membrain, skip SNN dynamics and use direct cosine similarity
         
     Returns:
         List of BenchmarkResult for each (method, noise_level) combination
@@ -221,6 +223,11 @@ def run_benchmarks(
     elif "membrain" in available and not check_membrain_available():
         logger.warning("Membrain server not available, skipping membrain baseline")
         del available["membrain"]
+    
+    # Configure Membrain with bypass_snn if requested
+    if "membrain" in available and bypass_snn:
+        from bench.baselines.membrain_client import MembrainStore
+        available["membrain"] = (MembrainStore, {"bypass_snn": True})
     
     if not available:
         logger.error("No vector stores available to benchmark")
@@ -413,6 +420,11 @@ def main() -> int:
         help="Skip Membrain even if server is available",
     )
     parser.add_argument(
+        "--bypass-snn",
+        action="store_true",
+        help="For Membrain: skip SNN dynamics, use direct cosine similarity (baseline)",
+    )
+    parser.add_argument(
         "--dataset",
         type=str,
         choices=VALID_DATASETS,
@@ -444,6 +456,7 @@ def main() -> int:
         methods=args.methods,
         skip_membrain=args.skip_membrain,
         dataset_type=args.dataset,
+        bypass_snn=args.bypass_snn,
     )
     
     if not results:
