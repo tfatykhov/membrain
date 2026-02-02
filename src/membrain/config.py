@@ -71,6 +71,11 @@ class MembrainConfig:
     log_file: str | None = None  # Optional file path
     log_include_trace: bool = False  # Include stack traces in error logs
 
+    # Attractor (pattern cleanup)
+    use_attractor: bool = False  # Enable attractor cleanup during recall
+    attractor_learning_rate: float = 0.3  # Hebbian learning rate for attractor
+    attractor_max_steps: int = 50  # Max dynamics iterations for cleanup
+
     @classmethod
     def from_env(cls) -> "MembrainConfig":
         """Load configuration from environment variables.
@@ -95,6 +100,9 @@ class MembrainConfig:
             MEMBRAIN_LOG_FORMAT: Log format, 'json' or 'text' (default: json)
             MEMBRAIN_LOG_FILE: Optional log file path (default: None)
             MEMBRAIN_LOG_INCLUDE_TRACE: Include stack traces (default: false)
+            MEMBRAIN_USE_ATTRACTOR: Enable attractor cleanup (default: false)
+            MEMBRAIN_ATTRACTOR_LEARNING_RATE: Hebbian learning rate (default: 0.3)
+            MEMBRAIN_ATTRACTOR_MAX_STEPS: Max dynamics iterations (default: 50)
         """
         # Parse auth tokens (support both single and multi-token formats)
         tokens = _parse_token_list(os.environ.get("MEMBRAIN_AUTH_TOKENS"))
@@ -121,6 +129,9 @@ class MembrainConfig:
             log_format=os.environ.get("MEMBRAIN_LOG_FORMAT", "json"),
             log_file=os.environ.get("MEMBRAIN_LOG_FILE") or None,
             log_include_trace=os.environ.get("MEMBRAIN_LOG_INCLUDE_TRACE", "").lower() in ("true", "1", "yes"),
+            use_attractor=os.environ.get("MEMBRAIN_USE_ATTRACTOR", "").lower() in ("true", "1", "yes"),
+            attractor_learning_rate=float(os.environ.get("MEMBRAIN_ATTRACTOR_LEARNING_RATE", 0.3)),
+            attractor_max_steps=int(os.environ.get("MEMBRAIN_ATTRACTOR_MAX_STEPS", 50)),
         )
 
     @classmethod
@@ -148,6 +159,9 @@ class MembrainConfig:
             log_format="text",  # Human-readable for tests
             log_file=None,
             log_include_trace=True,
+            use_attractor=False,  # Disabled by default for speed
+            attractor_learning_rate=0.3,
+            attractor_max_steps=20,  # Faster for testing
         )
 
     def validate(self) -> None:
