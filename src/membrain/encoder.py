@@ -15,6 +15,10 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
+from membrain.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class FlyHash:
     """
@@ -132,6 +136,16 @@ class FlyHash:
         # Create sparse binary output
         output = np.zeros(self.output_dim, dtype=np.float32)
         output[top_k_indices] = 1.0
+
+        logger.debug(
+            "FlyHash encoded",
+            extra={
+                "input_dim": self.input_dim,
+                "output_dim": self.output_dim,
+                "active_bits": self.active_bits,
+                "sparsity": 1.0 - (self.active_bits / self.output_dim),
+            },
+        )
 
         return output
 
