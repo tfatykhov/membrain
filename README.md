@@ -34,7 +34,7 @@ Traditional RAG (Retrieval Augmented Generation) uses vector databases for stati
 ## Key Concepts
 
 ### FlyHash Encoding
-Converts dense LLM embeddings (1536-d floats) into sparse binary spike trains (20,000-d binary) using random projection + Winner-Take-All inhibition. This enables efficient SNN processing.
+Converts dense LLM embeddings (1536-d floats) into sparse binary spike trains (20,000-d binary) using `int8` random projection + Winner-Take-All inhibition. This enables efficient SNN processing with minimal memory footprint (~30 MB).
 
 ### Associative Memory
 Uses Nengo's neural populations with Voja learning rule to form dynamic associations. Unlike hash tables, memories naturally cluster by semantic similarity.

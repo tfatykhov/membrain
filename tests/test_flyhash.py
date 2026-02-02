@@ -5,6 +5,7 @@ Validates:
 - Output dimensions and sparsity
 - Locality-sensitive hashing properties (similar vectors → similar hashes)
 - Reproducibility with seed
+- Memory efficiency (int8 projection)
 - Edge cases and error handling
 """
 
@@ -42,16 +43,33 @@ class TestFlyHashInit:
             FlyHash(input_dim=100, expansion_ratio=1.0, active_bits=100)
 
     def test_projection_matrix_shape(self) -> None:
-        """Projection matrix should have correct shape."""
+        """Projection matrix should have correct shape (output_dim, input_dim)."""
         encoder = FlyHash(input_dim=256, expansion_ratio=10.0, seed=42)
-        assert encoder.projection_matrix.shape == (256, 2560)
+        assert encoder._projection.shape == (2560, 256)
 
-    def test_projection_matrix_sparsity(self) -> None:
-        """Projection matrix should be sparse (10% connections)."""
-        encoder = FlyHash(input_dim=1000, expansion_ratio=10.0, seed=42)
-        density = np.mean(encoder.projection_matrix)
-        # Should be approximately 10% (connection_probability default)
-        assert 0.08 < density < 0.12
+    def test_projection_dtype_is_int8(self) -> None:
+        """Projection matrix should use int8 for memory efficiency."""
+        encoder = FlyHash(input_dim=256, seed=42)
+        assert encoder._projection.dtype == np.int8
+
+    def test_projection_values_are_binary(self) -> None:
+        """Projection matrix should contain only {-1, +1}."""
+        encoder = FlyHash(input_dim=256, seed=42)
+        unique = np.unique(encoder._projection)
+        assert set(unique) == {-1, 1}
+
+    def test_memory_efficient(self) -> None:
+        """Default config should use < 50 MB for projection."""
+        encoder = FlyHash(input_dim=1536, expansion_ratio=13.0, seed=42)
+        # 19968 * 1536 * 1 byte = ~30.7 MB
+        assert encoder._projection.nbytes < 50_000_000
+        assert encoder.memory_bytes < 50_000_000
+
+    def test_memory_bytes_property(self) -> None:
+        """memory_bytes property should return projection size."""
+        encoder = FlyHash(input_dim=64, expansion_ratio=4.0, seed=42)
+        expected = 64 * 4 * 64  # output_dim * input_dim * 1 byte
+        assert encoder.memory_bytes == expected
 
 
 class TestFlyHashEncode:
@@ -106,7 +124,7 @@ class TestFlyHashReproducibility:
         """Same seed should produce identical projection matrices."""
         enc1 = FlyHash(seed=42)
         enc2 = FlyHash(seed=42)
-        assert np.array_equal(enc1.projection_matrix, enc2.projection_matrix)
+        assert np.array_equal(enc1._projection, enc2._projection)
 
     def test_same_seed_same_output(self) -> None:
         """Same seed and input should produce identical output."""
@@ -123,7 +141,7 @@ class TestFlyHashReproducibility:
         """Different seeds should produce different matrices."""
         enc1 = FlyHash(seed=42)
         enc2 = FlyHash(seed=123)
-        assert not np.array_equal(enc1.projection_matrix, enc2.projection_matrix)
+        assert not np.array_equal(enc1._projection, enc2._projection)
 
 
 class TestFlyHashLocalitySensitivity:
@@ -266,3 +284,4 @@ class TestFlyHashMetrics:
         assert "FlyHash" in r
         assert "input_dim=1536" in r
         assert "active_bits=50" in r
+        assert "memory=" in r  # New: includes memory usage

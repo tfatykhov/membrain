@@ -20,23 +20,21 @@ def __init__(
     input_dim: int = 1536,
     expansion_ratio: float = 13.0,
     active_bits: int = 50,
-    connection_probability: float = 0.1,
     seed: int | None = None
 )
 ```
 - **input_dim:** Dimension of the source vector (e.g., 1536 for OpenAI `text-embedding-ada-002`).
 - **expansion_ratio:** Multiplier for output dimension. `output_dim = input_dim * expansion_ratio`.
 - **active_bits (k):** The exact number of neurons that will fire (be set to 1) in the output. This enforces a strict k-hot code.
-- **connection_probability:** Density of the random projection matrix.
 - **seed:** Random seed for deterministic projection matrix generation.
 
 ### Algorithm Steps (`encode`)
 
 1.  **Random Projection:**
-    The input vector $x$ is multiplied by a sparse, binary random matrix $M$.
+    The input vector $x$ is multiplied by a dense, int8 projection matrix $M$.
     $$ y = M^T x $$
     - $M$ has shape `(input_dim, output_dim)`.
-    - Entries in $M$ are $0$ or $1$, chosen with `connection_probability`.
+    - Entries in $M$ are $\{-1, +1\}$, stored as `int8` for memory efficiency.
 
 2.  **Winner-Take-All (WTA) Inhibition:**
     To enforce sparsity, only the top-$k$ neurons with the highest activation in $y$ are kept active.
@@ -92,4 +90,4 @@ print(np.sum(sparse_code)) # 50.0
 - **Determinism:** The projection matrix is generated once at initialization based on the seed. It must remain constant for the lifetime of the system to ensure consistent encoding.
 
 ## Known Limitations / TODOs
-- **Memory Usage:** The projection matrix is stored in memory. For very large dimensions (e.g., 1M output), this matrix can become large (`float32` * input * output). A sparse matrix implementation (`scipy.sparse`) could reduce memory footprint.
+- **Memory Usage:** The projection matrix is stored in memory. Using `int8` {-1, +1} projection significantly reduces footprint (e.g., ~30 MB for standard config vs ~245 MB previously).
