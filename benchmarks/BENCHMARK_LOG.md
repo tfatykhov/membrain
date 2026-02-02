@@ -6,7 +6,7 @@ Tracking benchmark results across versions to measure progress.
 
 | Date | Commit | Version | Phase | Hit@1 (0%) | Hit@1 (20%) | Hit@1 (40%) | Notes |
 |------|--------|---------|-------|------------|-------------|-------------|-------|
-| 2026-02-02 | 1622ae3 | 0.4.0 | baseline | 1.00 | 1.00 | 1.00 | Gaussian too easy, need clustered |
+| 2026-02-02 | 1622ae3 | 0.4.0 | baseline | 1.00 | 0.84 | 0.36 | Clustered dataset, cosine only |
 
 ## Benchmark Protocol
 
@@ -34,26 +34,18 @@ Each benchmark run saves:
 
 ### Baseline (Pre-Attractor) — 2026-02-02
 
-**Commit:** 1622ae3 | **Version:** 0.4.0
+**Commit:** 1622ae3 | **Version:** 0.4.0 | **Dataset:** Clustered (10 clusters, std=0.1)
 
 **CosineBaseline Results:**
 | Noise | Hit@1 | Hit@5 | MRR | Latency (ms) |
 |-------|-------|-------|-----|--------------|
-| 0% | 1.00 | 1.00 | 1.00 | 0.28 |
-| 10% | 1.00 | 1.00 | 1.00 | 0.43 |
-| 20% | 1.00 | 1.00 | 1.00 | 0.62 |
-| 30% | 1.00 | 1.00 | 1.00 | 0.39 |
-| 40% | 1.00 | 1.00 | 1.00 | 0.54 |
-| 50% | 1.00 | 1.00 | 1.00 | 0.48 |
-| 60% | 1.00 | 1.00 | 1.00 | 0.20 |
-| 70% | 1.00 | 1.00 | 1.00 | 0.45 |
+| 0% | 1.00 | 1.00 | 1.00 | 0.23 |
+| 10% | 0.99 | 1.00 | 0.995 | 0.19 |
+| 20% | 0.84 | 0.99 | 0.897 | 0.17 |
+| 30% | 0.59 | 0.90 | 0.711 | 0.32 |
+| 40% | 0.36 | 0.72 | 0.504 | 0.25 |
+| 50% | 0.24 | 0.53 | 0.360 | 0.20 |
 
-**Issues Found:**
-1. ⚠️ Synthetic Gaussian dataset is too easy — 100% recall even at 70% noise
-2. ❌ FAISSFlatBaseline has init bug (missing `dim` arg)
-3. ⏸️ Membrain server not running (baseline-only)
+**Key Insight:** Clustered dataset creates realistic challenge. Hit@1 degrades significantly at 30%+ noise — **this is where attractor dynamics should shine.**
 
-**Action Items:**
-- [ ] Add `--dataset clustered` option to bench_noise.py
-- [ ] Fix FAISSFlatBaseline initialization
-- [ ] Run full benchmark with Membrain server
+**Thesis to Prove:** Membrain should maintain hit@1 > 0.59 at 30% noise (beat similarity search).
