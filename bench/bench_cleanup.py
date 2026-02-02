@@ -90,10 +90,19 @@ def cosine_similarity(a: NDArray, b: NDArray) -> float:
 
 def find_best_match(
     query: NDArray,
-    patterns: list[NDArray],
+    patterns_matrix: NDArray,
 ) -> int:
-    """Find index of most similar pattern."""
-    similarities = [cosine_similarity(query, p) for p in patterns]
+    """Find index of most similar pattern using vectorized similarity.
+    
+    Args:
+        query: Query vector (normalized)
+        patterns_matrix: Matrix of patterns, shape (num_patterns, dim)
+        
+    Returns:
+        Index of best matching pattern
+    """
+    # Vectorized dot product: (N, D) @ (D,) -> (N,)
+    similarities = patterns_matrix @ query
     return int(np.argmax(similarities))
 
 
@@ -131,6 +140,9 @@ def run_cleanup_benchmark(
         p = rng.standard_normal(dim).astype(np.float32)
         p /= np.linalg.norm(p)
         patterns.append(p)
+
+    # Stack into matrix for vectorized similarity search
+    patterns_matrix = np.stack(patterns, axis=0)  # (num_patterns, dim)
 
     # Create and populate attractor memory
     attractor = AttractorMemory(
@@ -174,13 +186,13 @@ def run_cleanup_benchmark(
                     noisy = noisy / noisy_norm
 
                 # Direct matching (no cleanup)
-                direct_match = find_best_match(noisy, patterns)
+                direct_match = find_best_match(noisy, patterns_matrix)
                 if direct_match == pattern_idx:
                     hits_direct += 1
 
                 # Cleanup then match
                 result = attractor.complete(noisy)
-                cleaned_match = find_best_match(result.cleaned, patterns)
+                cleaned_match = find_best_match(result.cleaned, patterns_matrix)
                 if cleaned_match == pattern_idx:
                     hits_cleaned += 1
 
