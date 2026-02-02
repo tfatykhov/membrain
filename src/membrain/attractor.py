@@ -236,10 +236,7 @@ class AttractorMemory:
             # Nonlinearity: tanh for bounded output
             state = np.tanh(activation).astype(np.float32)
 
-            # Lateral inhibition: sparsify to prevent blend states
-            state = self._apply_inhibition(state)
-
-            # Re-normalize
+            # Re-normalize (inhibition applied after loop to avoid oscillation)
             state_norm = np.linalg.norm(state)
             if state_norm > 1e-10:
                 state = state / state_norm
@@ -251,6 +248,13 @@ class AttractorMemory:
             if delta < self.convergence_threshold:
                 converged = True
                 break
+
+        # Apply lateral inhibition to final state (not during dynamics)
+        # This prevents oscillation from hard thresholding
+        state = self._apply_inhibition(state)
+        state_norm = np.linalg.norm(state)
+        if state_norm > 1e-10:
+            state = state / state_norm
 
         output_norm = float(np.linalg.norm(state))
 
@@ -278,6 +282,8 @@ class AttractorMemory:
         This implements winner-take-all dynamics that ensure
         the network settles to a single attractor.
 
+        Uses np.partition for O(N) complexity instead of O(N log N) sorting.
+
         Args:
             state: Current state vector.
 
@@ -287,8 +293,16 @@ class AttractorMemory:
         if self.sparsity_percentile >= 100:
             return state  # No inhibition
 
-        threshold = np.percentile(np.abs(state), self.sparsity_percentile)
-        return np.where(np.abs(state) > threshold, state, 0).astype(np.float32)
+        # Calculate k: number of elements to zero out
+        k = int((self.sparsity_percentile / 100.0) * len(state))
+        if k <= 0 or k >= len(state):
+            return state
+
+        # Use partition for O(N) threshold finding
+        abs_state = np.abs(state)
+        threshold = np.partition(abs_state, k)[k]
+
+        return np.where(abs_state > threshold, state, 0).astype(np.float32)
 
     def measure_cleanup(
         self,

@@ -137,7 +137,8 @@ class TestAttractorMemoryComplete:
         # Complete the exact pattern (should converge quickly)
         result = attractor.complete(pattern)
 
-        # May or may not converge depending on dynamics
+        # Should converge for stored pattern
+        assert result.converged is True, f"Did not converge in {result.steps} steps"
         assert result.steps <= 100
 
     def test_complete_empty_memory(self) -> None:
