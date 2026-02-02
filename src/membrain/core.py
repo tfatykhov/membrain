@@ -19,6 +19,7 @@ from membrain.logging import get_logger
 
 if TYPE_CHECKING:
     import nengo
+
     from membrain.attractor import AttractorMemory
 
 logger = get_logger(__name__)
