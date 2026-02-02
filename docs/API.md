@@ -27,6 +27,9 @@ from membrain.config import MembrainConfig
 | `seed` | `int` | `None` | Random seed for reproducibility. |
 | `auth_tokens` | `list[str]` | `[]` | List of valid authentication tokens. |
 | `prune_threshold` | `float` | `0.1` | Importance threshold for pruning memories. |
+| `noise_scale` | `float` | `0.05` | Gaussian noise std for stochastic consolidation. |
+| `max_consolidation_steps` | `int` | `50` | Max iterations for attractor settling. |
+| `convergence_threshold` | `float` | `1e-4` | State difference to consider settled. |
 
 #### Methods
 
@@ -85,7 +88,7 @@ Defined in `protos/memory_a2a.proto`.
 | :--- | :--- | :--- | :--- |
 | `Remember` | `MemoryPacket` | `Ack` | Store a vector with learning. |
 | `Recall` | `QueryPacket` | `ContextResponse` | Query associative memory. |
-| `Consolidate` | `SleepSignal` | `Ack` | Run sleep phase/cleanup. |
+| `Consolidate` | `SleepSignal` | `ConsolidateResponse` | Run sleep phase/cleanup. |
 | `Ping` | `Empty` | `Ack` | Health check. |
 
 ### Messages
@@ -115,8 +118,19 @@ Defined in `protos/memory_a2a.proto`.
 #### `SleepSignal`
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `duration_ms` | `int32` | Milliseconds to simulate sleep. |
+| `noise_scale` | `float` | Gaussian noise std for attractor dynamics (default: 0.05). |
+| `max_steps` | `int32` | Max iterations for settling (default: 50). |
+| `convergence_threshold` | `float` | State diff to consider settled (default: 1e-4). |
 | `prune_weak` | `bool` | If true, remove low-importance memories. |
+| `prune_threshold` | `float` | Importance threshold for pruning (default: 0.1). |
+
+#### `ConsolidateResponse`
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `success` | `bool` | Whether consolidation completed. |
+| `steps_to_converge` | `int32` | Steps taken to converge (-1 if max reached). |
+| `pruned_count` | `int32` | Number of memories pruned. |
+| `message` | `string` | Status message. |
 
 ---
 
@@ -130,7 +144,7 @@ Defined in `protos/memory_a2a.proto`.
 | `__init__` | `n_neurons, dimensions, learning_rate` | `self` | Initialize SNN. |
 | `remember` | `context_id, sparse_vector, importance` | `bool` | Learn pattern. |
 | `recall` | `query_vector, threshold` | `list[RecallResult]` | Retrieve pattern. |
-| `consolidate` | `duration_ms, prune_weak` | `int` | Maintenance. |
+| `consolidate` | `noise_scale, max_steps, convergence_threshold` | `tuple[int, int]` | Stochastic consolidation (steps, pruned). |
 
 ### `FlyHash`
 `membrain.encoder.FlyHash`
