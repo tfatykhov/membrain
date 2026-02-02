@@ -93,12 +93,11 @@ def check_membrain_available(
     """
     try:
         import grpc
-        from membrain_pb2 import PingRequest
-        from membrain_pb2_grpc import MembrainServiceStub
+        from membrain.proto import memory_a2a_pb2, memory_a2a_pb2_grpc
         
         channel = grpc.insecure_channel(f"{host}:{port}")
-        stub = MembrainServiceStub(channel)
-        stub.Ping(PingRequest(), timeout=timeout_s)
+        stub = memory_a2a_pb2_grpc.MemoryUnitStub(channel)
+        stub.Ping(memory_a2a_pb2.Empty(), timeout=timeout_s)
         channel.close()
         return True
     except Exception:
