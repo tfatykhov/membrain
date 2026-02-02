@@ -214,6 +214,16 @@ class MembrainConfig:
                 f"convergence_threshold must be positive, got {self.convergence_threshold}"
             )
 
+        if self.attractor_learning_rate <= 0 or self.attractor_learning_rate > 1.0:
+            raise ValueError(
+                f"attractor_learning_rate must be 0.0-1.0, got {self.attractor_learning_rate}"
+            )
+
+        if self.attractor_max_steps < 1:
+            raise ValueError(
+                f"attractor_max_steps must be positive, got {self.attractor_max_steps}"
+            )
+
         # Validate logging config
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if self.log_level.upper() not in valid_levels:
@@ -251,3 +261,6 @@ class MembrainConfig:
         logger.info(f"  log_level: {self.log_level}")
         logger.info(f"  log_format: {self.log_format}")
         logger.info(f"  log_file: {self.log_file or 'stdout'}")
+        logger.info(f"  use_attractor: {self.use_attractor}")
+        logger.info(f"  attractor_learning_rate: {self.attractor_learning_rate}")
+        logger.info(f"  attractor_max_steps: {self.attractor_max_steps}")
