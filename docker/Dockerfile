@@ -24,12 +24,14 @@ COPY protos/ ./protos/
 # Install Python dependencies
 RUN pip install --no-cache-dir -e .
 
-# Generate protobuf stubs
+# Generate protobuf stubs and fix imports for package structure
 RUN python -m grpc_tools.protoc \
     -I./protos \
     --python_out=./src/membrain/proto \
     --grpc_python_out=./src/membrain/proto \
-    ./protos/memory_a2a.proto
+    ./protos/memory_a2a.proto && \
+    sed -i 's/^import memory_a2a_pb2/from membrain.proto import memory_a2a_pb2/' \
+    ./src/membrain/proto/memory_a2a_pb2_grpc.py
 
 # Expose gRPC port
 EXPOSE 50051
