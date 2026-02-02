@@ -4,10 +4,19 @@ Adapts the Membrain gRPC interface to the VectorStore protocol,
 enabling direct comparison with baseline implementations.
 
 Requires a running Membrain server (see docker-compose.yml).
+
+WARNING: Server state is persistent. For clean benchmarks:
+- Restart the server between benchmark runs, OR
+- Use fresh Docker containers for each run
+
+The clear() method only resets client-side tracking, not server state.
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
+import logging
 import sys
+import warnings
 
 import grpc
 import numpy as np
@@ -15,6 +24,8 @@ from numpy.typing import NDArray
 
 from membrain.proto import memory_a2a_pb2
 from membrain.proto import memory_a2a_pb2_grpc
+
+logger = logging.getLogger(__name__)
 
 
 class MembrainStore:
@@ -38,6 +49,7 @@ class MembrainStore:
         port: int = 50051,
         api_key: str | None = None,
         timeout_s: float = 5.0,
+        max_workers: int = 4,
     ) -> None:
         """Initialize connection to Membrain server.
         
@@ -46,11 +58,21 @@ class MembrainStore:
             port: Server port
             api_key: API key for authentication (if server requires it)
             timeout_s: RPC timeout in seconds
+            max_workers: Max threads for parallel batch operations
         """
         self._host = host
         self._port = port
         self._api_key = api_key
         self._timeout = timeout_s
+        self._max_workers = max_workers
+        
+        # Warn about insecure channel with API key on non-localhost
+        if api_key and host not in ("localhost", "127.0.0.1", "::1"):
+            warnings.warn(
+                f"Sending API key over insecure channel to {host}. "
+                "Consider using TLS for production environments.",
+                SecurityWarning,
+            )
         
         # Connection state
         self._channel: grpc.Channel | None = None
@@ -125,9 +147,12 @@ class MembrainStore:
         self._stored_bytes += len(vector) * 4  # float32
     
     def store_batch(self, items: list[tuple[str, NDArray[np.floating]]]) -> None:
-        """Bulk insert — calls store() for each item.
+        """Bulk insert with parallel RPCs.
         
-        Membrain doesn't have a batch RPC, so we iterate.
+        Membrain doesn't have a batch RPC, so we parallelize individual calls
+        using a thread pool for better throughput.
+        
+        Note: Server state is persistent. Restart server between benchmark runs.
         """
         if not items:
             return
@@ -148,8 +173,49 @@ class MembrainStore:
                     f"expected {self._dim}, got {len(vec)}"
                 )
         
-        for key, vec in items:
-            self.store(key, vec)
+        # Set dimension from first vector if not set
+        if self._dim == 0 and items:
+            self._dim = len(items[0][1])
+        
+        stub = self._ensure_connected()
+        
+        def _store_one(key: str, vector: NDArray[np.floating]) -> tuple[str, bool, str]:
+            """Store single vector, return (key, success, message)."""
+            try:
+                norm = np.linalg.norm(vector)
+                if norm < 1e-10:
+                    return (key, False, "Zero vector")
+                normalized = vector / norm
+                
+                packet = memory_a2a_pb2.MemoryPacket(
+                    context_id=key,
+                    vector=normalized.astype(np.float32).tolist(),
+                    importance=1.0,
+                )
+                response = self._call_with_auth(stub.Remember, packet)
+                return (key, response.success, response.message)
+            except Exception as e:
+                return (key, False, str(e))
+        
+        # Parallel execution
+        errors: list[str] = []
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+            futures = {
+                executor.submit(_store_one, key, vec): key 
+                for key, vec in items
+            }
+            for future in as_completed(futures):
+                key, success, message = future.result()
+                if success:
+                    self._keys.append(key)
+                    self._key_set.add(key)
+                    # Estimate bytes (can't get exact from future)
+                    self._stored_bytes += self._dim * 4
+                else:
+                    errors.append(f"{key}: {message}")
+        
+        if errors:
+            logger.warning("Batch store had %d failures: %s", len(errors), errors[:5])
     
     def query(
         self,
@@ -191,12 +257,21 @@ class MembrainStore:
         return results[:k]
     
     def clear(self) -> None:
-        """Clear local tracking state.
+        """Clear local tracking state ONLY.
         
-        Note: This does NOT clear the Membrain server.
-        Server-side clearing requires restart or a dedicated RPC (not implemented).
-        For benchmarks, restart the server between runs.
+        WARNING: This does NOT clear the Membrain server!
+        Server state is persistent. Re-running benchmarks without restarting
+        the server will cause 'Duplicate key' errors.
+        
+        For clean benchmarks:
+        - docker-compose down && docker-compose up, OR
+        - Use unique key prefixes per run (e.g., f"run_{uuid}_{key}")
         """
+        logger.warning(
+            "clear() only resets client state. "
+            "Server still has %d stored vectors. Restart server for clean benchmarks.",
+            len(self._keys),
+        )
         self._keys.clear()
         self._key_set.clear()
         self._dim = 0
