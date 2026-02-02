@@ -100,12 +100,12 @@ class TextFormatter(logging.Formatter):
         return result
 
 
-class StructuredLoggerAdapter(logging.LoggerAdapter):
+class StructuredLoggerAdapter(logging.LoggerAdapter):  # type: ignore[type-arg]
     """Logger adapter that supports extra fields."""
 
     def process(
-        self, msg: str, kwargs: dict[str, Any]
-    ) -> tuple[str, dict[str, Any]]:
+        self, msg: str, kwargs: Any
+    ) -> tuple[str, Any]:
         """Process log message to include extra fields.
 
         Args:
