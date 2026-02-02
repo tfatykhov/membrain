@@ -122,6 +122,15 @@ class AttractorMemory:
         if max_steps <= 0:
             raise ValueError(f"max_steps must be positive, got {max_steps}")
 
+        # Warn about O(N^2) memory for high dimensions
+        if dimensions > 2000:
+            logger.warning(
+                "AttractorMemory uses O(N^2) weight matrix. "
+                "For dimensions=%d, this is %.1f MB. Consider dimension reduction.",
+                dimensions,
+                (dimensions * dimensions * 4) / (1024 * 1024),
+            )
+
         self.dimensions = dimensions
         self.learning_rate = learning_rate
         self.max_steps = max_steps
@@ -152,7 +161,11 @@ class AttractorMemory:
         """Number of patterns stored."""
         return self._pattern_count
 
-    def store(self, pattern: NDArray[np.floating]) -> None:
+    def store(
+        self,
+        pattern: NDArray[np.floating],
+        importance: float = 1.0,
+    ) -> None:
         """Store a pattern as an attractor via Hebbian learning.
 
         Uses the outer product rule to create a basin of attraction
@@ -161,6 +174,8 @@ class AttractorMemory:
 
         Args:
             pattern: Normalized pattern vector (L2 norm should be ~1).
+            importance: Learning rate modifier (0.0-1.0). Higher importance
+                       creates deeper attractor basins.
 
         Raises:
             ValueError: If pattern has wrong shape.
@@ -178,9 +193,10 @@ class AttractorMemory:
 
         normalized = (pattern / norm).astype(np.float32)
 
-        # Hebbian update: outer product
-        # This creates a fixed point at the pattern
-        update = self.learning_rate * np.outer(normalized, normalized)
+        # Hebbian update: outer product, scaled by importance
+        # Higher importance = deeper basin
+        effective_lr = self.learning_rate * importance
+        update = effective_lr * np.outer(normalized, normalized)
 
         # Zero diagonal to prevent self-reinforcement runaway
         np.fill_diagonal(update, 0)

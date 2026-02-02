@@ -262,9 +262,9 @@ class BiCameralMemory:
             stored_at=self._simulator.time,
         )
 
-        # Also store in attractor if enabled
+        # Also store in attractor if enabled (with importance for basin depth)
         if self._attractor is not None:
-            self._attractor.store(scaled_vector)
+            self._attractor.store(scaled_vector, importance=importance)
 
         # Clear input
         self._input_value = np.zeros(self.dimensions, dtype=np.float32)
