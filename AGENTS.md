@@ -1,23 +1,24 @@
 # AGENTS.md - Agentic Development Guide
 
-**Purpose:** This document provides essential context for AI agents (GPT, Claude, Gemini, etc.) working on the Membrain codebase.
+**Purpose:** Essential context for AI agents working on Membrain.
 
 ---
 
 ## Project Overview
 
-**Membrain** is a Neuromorphic Memory Bridge for LLM Agents — a Spiking Neural Network (SNN) based memory system providing associative recall and continuous learning for AI agents. Think of it as a synthetic hippocampus.
+**Membrain** is a Neuromorphic Memory Bridge for LLM Agents — a Spiking Neural Network (SNN) based memory system providing associative recall and continuous learning. Think of it as a synthetic hippocampus.
 
 | Aspect | Details |
 |--------|---------|
-| **Language** | Python 3.9+ |
-| **Status** | PoC (Proof of Concept) |
-| **Core Tech** | Nengo, nengo-loihi, Lava, gRPC |
-| **Target HW** | CPU (simulating Intel Loihi 2) |
+| **Language** | Python 3.11+ |
+| **Version** | v0.4.0 |
+| **Status** | Active Development |
+| **Core Tech** | Nengo, gRPC, NumPy |
+| **Target HW** | CPU (Loihi 2 planned for Phase 3) |
 
 ---
 
-## Architecture Summary
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -29,18 +30,19 @@
 │                    Membrain Service                         │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │   gRPC API   │──│   FlyHash    │──│  Nengo SNN Core  │  │
-│  │  (A2A Proto) │  │   Encoder    │  │  (Loihi Emu)     │  │
+│  │   gRPC API   │──│   FlyHash    │──│  BiCameralMemory │  │
+│  │  + Logging   │  │  (int8 proj) │  │  (Nengo SNN)     │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Data Flow
 
-1. **Input:** LLM agent sends 1536-d embedding vector via gRPC
-2. **Transduction:** FlyHash converts to 20,000-d sparse binary spikes
+1. **Input:** LLM agent sends 1536-d embedding via gRPC
+2. **Encoding:** FlyHash converts to ~20,000-d sparse binary (int8 projection, 8x memory efficient)
 3. **Processing:** Nengo SNN stores/retrieves via Voja learning
-4. **Output:** Context IDs returned to agent
+4. **Consolidation:** Stochastic attractor dynamics with noise injection
+5. **Output:** Context IDs + confidence scores returned
 
 ---
 
@@ -49,238 +51,195 @@
 ```
 membrain/
 ├── src/membrain/           # Main source code
-│   ├── __init__.py         # Package init, exports __version__
-│   ├── server.py           # gRPC server (TODO: implement)
-│   ├── cli.py              # CLI interface (serve, status, version)
-│   ├── encoder.py          # FlyHash encoder (TODO: create)
-│   ├── core.py             # Nengo SNN network (TODO: create)
+│   ├── __init__.py         # Package init
+│   ├── server.py           # gRPC server + auth
+│   ├── config.py           # MembrainConfig dataclass
+│   ├── encoder.py          # FlyHash (int8 projection)
+│   ├── core.py             # BiCameralMemory (Nengo SNN)
+│   ├── logging.py          # Structured JSON logging
+│   ├── interceptors.py     # gRPC LoggingInterceptor
+│   ├── health_check.py     # Docker healthcheck
 │   └── proto/              # Generated gRPC stubs
-├── tests/                  # Test suite
-│   ├── __init__.py
-│   └── test_core.py        # Placeholder tests (FlyHash, Memory)
+├── tests/                  # 141+ tests
 ├── protos/
 │   └── memory_a2a.proto    # gRPC service definition
 ├── docker/
-│   ├── Dockerfile          # Container build file
-│   └── docker-compose.yml  # Docker Compose config
-├── ProductRequiremets/
-│   └── prd.md              # Detailed PRD with implementation specs
-├── .github/workflows/
-│   └── ci.yml              # GitHub Actions CI/CD pipeline
-├── pyproject.toml          # Project config (hatchling build)
-└── README.md               # User documentation
+│   ├── Dockerfile          # Container build
+│   ├── docker-compose.yml  # One-command run
+│   └── .env.example        # Config template
+├── features/               # Feature specifications (01-14)
+├── docs/                   # Documentation
+└── pyproject.toml          # Project config
 ```
 
 ---
 
-## Key Files Reference
+## Key Files
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `src/membrain/server.py` | gRPC MemoryUnit service | Stub only |
-| `src/membrain/cli.py` | CLI entry points | Working |
-| `src/membrain/encoder.py` | FlyHash implementation | **Not created** |
-| `src/membrain/core.py` | Nengo SNN BiCameralMemory | **Not created** |
-| `protos/memory_a2a.proto` | A2A protocol definition | Complete |
-| `ProductRequiremets/prd.md` | Full implementation specs | Reference |
+| `server.py` | gRPC MemoryUnit service + auth | ✅ Complete |
+| `config.py` | Centralized config from env vars | ✅ Complete |
+| `encoder.py` | FlyHash (int8 projection, 8x memory savings) | ✅ Complete |
+| `core.py` | BiCameralMemory with stochastic consolidation | ✅ Complete |
+| `logging.py` | JSON structured logging + context vars | ✅ Complete |
+| `interceptors.py` | gRPC request logging with timing | ✅ Complete |
+| `health_check.py` | Docker HEALTHCHECK via Ping RPC | ✅ Complete |
 
 ---
 
-## gRPC API (A2A Protocol)
+## gRPC API
 
 **Service:** `MemoryUnit` on port `50051`
 
 | Method | Request | Response | Description |
 |--------|---------|----------|-------------|
-| `Remember` | `MemoryPacket` | `Ack` | Store context vector with learning |
-| `Recall` | `QueryPacket` | `ContextResponse` | Retrieve via pattern completion |
-| `Consolidate` | `SleepSignal` | `Ack` | Memory consolidation (sleep phase) |
-| `Ping` | `Empty` | `Ack` | Health check |
+| `Remember` | `MemoryPacket` | `Ack` | Store memory with learning |
+| `Recall` | `QueryPacket` | `ContextResponse` | Pattern completion recall |
+| `Consolidate` | `SleepSignal` | `ConsolidateResponse` | Stochastic attractor settling |
+| `Ping` | `Empty` | `Ack` | Health check (auth exempt) |
 
-### Key Message Types
+### Authentication
 
-```protobuf
-MemoryPacket {
-  string context_id;      // UUID of memory
-  repeated float vector;  // 1536-d embedding
-  float importance;       // 0.0-1.0 learning rate mod
-  map<string, string> metadata;
-}
+Token-based auth via `authorization: Bearer <token>` metadata.
+- Set via `MEMBRAIN_AUTH_TOKEN` or `MEMBRAIN_AUTH_TOKENS`
+- Ping is exempt for Docker healthcheck
 
-QueryPacket {
-  repeated float vector;  // Query embedding
-  float threshold;        // Similarity threshold
-  int32 max_results;
-}
-```
+---
+
+## Configuration
+
+All via environment variables. See `docs/config.md` for full reference.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEMBRAIN_PORT` | 50051 | gRPC port |
+| `MEMBRAIN_INPUT_DIM` | 1536 | Embedding dimension |
+| `MEMBRAIN_N_NEURONS` | 1000 | SNN neuron count |
+| `MEMBRAIN_SEED` | None | Reproducibility seed |
+| `MEMBRAIN_AUTH_TOKEN` | None | Bearer token |
+| `MEMBRAIN_LOG_FORMAT` | json | `json` or `text` |
+| `MEMBRAIN_NOISE_SCALE` | 0.05 | Consolidation noise |
 
 ---
 
 ## Development Commands
 
-```powershell
-# Install dependencies (dev mode)
+```bash
+# Install
 pip install -e ".[dev]"
 
-# Run tests
+# Test (141+ tests)
 python -m pytest tests/ -v
 
-# Linting
+# Type check
+mypy src/membrain/ --ignore-missing-imports
+
+# Lint
 ruff check src/
-
-# Type checking
-mypy src/ --ignore-missing-imports
-
-# Format code
-ruff format src/
-
-# Generate protobuf stubs
-python -m grpc_tools.protoc -I./protos --python_out=./src/membrain/proto --grpc_python_out=./src/membrain/proto ./protos/memory_a2a.proto
 
 # Start server
 python -m membrain.server
 
-# Docker build
-docker build -t membrain:latest -f docker/Dockerfile .
-
-# Docker run
+# Docker one-command run
 docker compose -f docker/docker-compose.yml up -d
+
+# Regenerate proto stubs
+python -m grpc_tools.protoc -I./protos \
+  --python_out=./src/membrain/proto \
+  --grpc_python_out=./src/membrain/proto \
+  ./protos/memory_a2a.proto
 ```
 
 ---
 
-## Implementation Roadmap
+## Feature Status
 
-Based on `ProductRequiremets/prd.md`:
+### Completed (v0.4.0)
+- ✅ 01: gRPC A2A Interface
+- ✅ 02: FlyHash Encoder
+- ✅ 03: Neuromorphic Core
+- ✅ 04: Config System
+- ✅ 05: FlyHash int8 Optimization (8x memory reduction)
+- ✅ 06: gRPC Healthcheck
+- ✅ 07: Stochastic Consolidation (attractor dynamics)
+- ✅ 08: Docker Compose
+- ✅ 10: Structured Logging
 
-- [x] Project scaffolding and CI/CD
-- [x] gRPC protocol definition (`memory_a2a.proto`)
-- [ ] FlyHash encoder implementation (`encoder.py`)
-- [ ] Nengo SNN core (`core.py`)
-- [ ] gRPC server implementation (`server.py`)
-- [ ] Integration tests
-- [ ] Docker containerization testing
+### Phase 1 Remaining
+- 🔴 09: Benchmarks
 
----
+### Phase 2 (Synthetic Hippocampus)
+- 🔴 11: Attractor Dynamics (advanced)
+- 🔴 12: Temporal Binding
+- 🔴 13: Persistence
 
-## Core Concepts for Agents
-
-### 1. FlyHash Encoding
-
-Converts dense 1536-d vectors into sparse 20,000-d binary codes:
-
-- Random projection matrix `M` of shape `(d, d*r)`
-- Winner-Take-All: keep top `k` active bits
-- Guarantees fixed sparsity for SNN efficiency
-
-### 2. Associative Memory (Nengo)
-
-Uses `nengo.Ensemble` with Voja learning rule:
-
-- **Write:** Run SNN 50ms with plasticity ON
-- **Read:** Run SNN 20ms with plasticity OFF, network settles to attractor state
-
-### 3. Pattern Completion
-
-Query with noisy/partial input → network settles → returns complete memory. Target: 100% accuracy with 20% noise.
+### Phase 3 (Hardware)
+- 🔴 14: Lava Process Integration (Intel Loihi 2)
 
 ---
 
-## Testing Strategy
+## Core Concepts
 
-Tests in `tests/test_core.py` (currently placeholders):
+### FlyHash Encoding
+- **int8 {-1, +1} projection** — 8x memory reduction vs float64
+- Random projection + Winner-Take-All
+- ~30 MB for default config (was ~245 MB)
 
-| Test Class | Focus |
-|------------|-------|
-| `TestFlyHash` | Sparsity, similar/dissimilar vector handling |
-| `TestAssociativeMemory` | Remember/recall, pattern completion, sparsity rate |
+### Stochastic Consolidation
+- Injects Gaussian white noise into network state
+- Iterates until convergence (attractor settling)
+- Mimics hippocampal consolidation during sleep
+- Key for patent claim ("Attractor Dynamics")
 
-**Success Metrics:**
-
-- SynOp Count: Linear scaling with active neurons
-- Sparsity Rate: >90% (less than 10% neurons fire)
-- Pattern Completion: 100% at 20% noise
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOIHI_BACKEND` | `SIM` | Backend mode (`SIM` for CPU emulation) |
-| `MEMBRAIN_PORT` | `50051` | gRPC server port |
+### Structured Logging
+- JSON format with `timestamp`, `level`, `logger`, `message`
+- Request correlation via `request_id` context var
+- RPC timing logged automatically
 
 ---
 
-## Dependencies
+## Testing
 
-**Core:**
+141+ tests covering:
+- FlyHash encoding (sparsity, similarity preservation)
+- BiCameralMemory (remember, recall, consolidation)
+- gRPC server (all RPCs, auth, edge cases)
+- Config validation
+- Logging (JSON format, context vars)
+- Health check
 
-- `nengo>=3.2.0` - Neural simulation
-- `nengo-loihi>=1.1.0` - Loihi emulator backend
-- `lava-nc>=0.5.0` - Intel Lava framework
-- `grpcio>=1.50.0` - gRPC runtime
-- `numpy>=1.24.0` - Numerical operations
+**Run tests:**
+```bash
+python -m pytest tests/ -v
+```
 
-**Dev:**
+---
 
-- `pytest>=7.0.0` - Testing
-- `ruff>=0.1.0` - Linting/formatting
-- `mypy>=1.0.0` - Type checking
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`):
+- Python 3.11, 3.12
+- Steps: lint → type-check → test → docker build
+- Must pass before merge
 
 ---
 
 ## Coding Conventions
 
-1. **Type hints required** - All functions must have type annotations
-2. **Docstrings** - Use Google-style docstrings for all public APIs
-3. **Line length** - 100 characters max
-4. **Imports** - Use `isort` ordering (ruff handles this)
-5. **Testing** - All new features must have corresponding unit tests
+1. **Type hints required** — All functions annotated
+2. **Docstrings** — Google-style for public APIs
+3. **Line length** — 88 characters (ruff default)
+4. **Structured logging** — Use `get_logger(__name__)`
+5. **Tests** — All features must have tests
+6. **PR workflow** — Branch → Review → CI green → Merge
 
 ---
 
-## Common Tasks for Agents
+## Resources
 
-### Adding New Functionality
-
-1. Read `ProductRequiremets/prd.md` for implementation specs
-2. Create/modify source in `src/membrain/`
-3. Add corresponding tests in `tests/`
-4. Run `ruff check` and `mypy` before committing
-5. Ensure all tests pass: `python -m pytest tests/ -v`
-
-### Implementing FlyHash Encoder
-
-Reference: PRD Section "Feature 2: The Encoder (FlyHash)"
-
-- Create `src/membrain/encoder.py`
-- Class `FlyHash` with random projection + WTA
-- Test semantic similarity preservation
-
-### Implementing SNN Core
-
-Reference: PRD Section "Feature 3: The Neuromorphic Core"
-
-- Create `src/membrain/core.py`
-- Class `BiCameralMemory` using `nengo.Ensemble`
-- Voja learning rule for plasticity
-
----
-
-## CI/CD Pipeline
-
-GitHub Actions (`.github/workflows/ci.yml`):
-
-- Runs on push/PR to `main`
-- Matrix: Python 3.9, 3.10, 3.11
-- Steps: lint → type-check → test → coverage → docker build
-
----
-
-## Contact & Resources
-
-- **Repository:** <https://github.com/tfatykhov/membrain>
-- **Nengo Docs:** <https://www.nengo.ai/>
-- **Intel Lava:** <https://github.com/lava-nc/lava>
-- **FlyHash Paper:** <https://arxiv.org/abs/1711.03127>
+- **Repo:** https://github.com/tfatykhov/membrain
+- **Docs:** `docs/` folder
+- **Features:** `features/` folder (numbered specs)
+- **Nengo:** https://www.nengo.ai/
+- **FlyHash Paper:** https://arxiv.org/abs/1711.03127
