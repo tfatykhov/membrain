@@ -11,17 +11,18 @@ This folder contains detailed specifications for all Membrain features.
 | 01 | [gRPC A2A Interface](./01-grpc-a2a-interface.md) | ✅ Done |
 | 02 | [FlyHash Encoder](./02-flyhash-encoder.md) | ✅ Done |
 | 03 | [Neuromorphic Core](./03-neuromorphic-core.md) | ✅ Done |
-| 05 | [Config System](./05-config-system.md) | ✅ Done (PR #14) |
-| 06 | [FlyHash Optimization](./06-flyhash-optimization.md) | ✅ Done (PR #17) |
-| 07 | [Healthcheck](./07-healthcheck.md) | ✅ Done (PR #18) |
+| 04 | [Config System](./04-config-system.md) | ✅ Done (PR #14) |
+| 05 | [FlyHash Optimization](./05-flyhash-optimization.md) | ✅ Done (PR #17) |
+| 06 | [Healthcheck](./06-healthcheck.md) | ✅ Done (PR #18) |
+| 07 | [Stochastic Consolidation](./07-stochastic-consolidation.md) | ✅ Done (PR #20) |
+| 08 | [Docker Compose](./08-docker-compose.md) | ✅ Done (PR #21) |
 
 ### Phase 1 — Product Loop
 
 | # | Feature | Status | Priority |
 |---|---------|--------|----------|
-| 08 | [Stochastic Consolidation](./08-stochastic-consolidation.md) | ✅ Done | **CRITICAL** |
-| 09 | [Docker Compose](./09-docker-compose.md) | ✅ Done | P0 |
-| 10 | [Benchmarks](./10-benchmarks.md) | 🔴 Not Started | P0 |
+| 09 | [Benchmarks](./09-benchmarks.md) | 🔴 Not Started | P0 |
+| 10 | [Structured Logging](./10-structured-logging.md) | 🔴 Not Started | P0 |
 
 ### Phase 2 — Synthetic Hippocampus
 
@@ -40,28 +41,21 @@ This folder contains detailed specifications for all Membrain features.
 ## Recommended Execution Order
 
 ### Phase 1: Product Loop
-1. ~~**05-config-system**~~ — ✅ Done
-2. ~~**06-flyhash-optimization**~~ — ✅ Done (8x memory reduction)
-3. ~~**07-healthcheck**~~ — ✅ Done (gRPC health check)
-4. ~~**08-stochastic-consolidation**~~ — ✅ Done (Patent claim enabler)
-5. ~~**09-docker-compose**~~ — ✅ Done (One-command run)
-6. **10-benchmarks** — Prove value vs baselines
+1. ~~**04-config-system**~~ — ✅ Done
+2. ~~**05-flyhash-optimization**~~ — ✅ Done (8x memory reduction)
+3. ~~**06-healthcheck**~~ — ✅ Done (gRPC health check)
+4. ~~**07-stochastic-consolidation**~~ — ✅ Done (Patent claim enabler)
+5. ~~**08-docker-compose**~~ — ✅ Done (One-command run)
+6. **10-structured-logging** — Observability infrastructure
+7. **09-benchmarks** — Prove value vs baselines
 
 ### Phase 2: Synthetic Hippocampus
-7. **11-attractor-dynamics** — Pattern completion
-8. **12-temporal-binding** — Sequence memory
-9. **13-persistence** — Production readiness
+8. **11-attractor-dynamics** — Pattern completion
+9. **12-temporal-binding** — Sequence memory
+10. **13-persistence** — Production readiness
 
 ### Phase 3: Hardware Migration
-10. **14-lava-process-integration** — Intel Loihi 2 deployment
-
-## Critical Feature: Stochastic Consolidation
-
-**Feature 08** is marked as **CRITICAL** because it:
-- Enables the core patent claim for "Attractor Dynamics"
-- Provides biological plausibility (mimics hippocampal consolidation)
-- Distinguishes Membrain from simple vector search
-- Must be implemented before benchmarks can prove the SNN advantage
+11. **14-lava-process-integration** — Intel Loihi 2 deployment
 
 ## Definition of Done (All Features)
 

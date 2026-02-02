@@ -1,4 +1,4 @@
-# PR-008 — Integration Tests + Benchmark Harness
+# Feature 09 — Integration Tests + Benchmark Harness
 
 ## Status: 🔴 Not Started
 
