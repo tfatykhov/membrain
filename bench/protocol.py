@@ -122,6 +122,15 @@ def check_protocol_compliance(store: VectorStore, dim: int = 64) -> list[str]:
     if store.dim != dim:
         errors.append(f"Expected dim={dim}, got {store.dim}")
     
+    # Test duplicate key rejection
+    try:
+        store.store("test_1", vec1)  # Same key again
+        errors.append("store() should raise ValueError on duplicate key")
+    except ValueError:
+        pass  # Expected
+    except Exception as e:
+        errors.append(f"store() raised wrong exception for duplicate: {type(e).__name__}: {e}")
+    
     # Query for it
     try:
         results = store.query(vec1, k=1)

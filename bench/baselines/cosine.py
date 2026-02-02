@@ -29,13 +29,14 @@ class CosineBaseline:
     
     def __init__(self) -> None:
         self._keys: list[str] = []
+        self._key_set: set[str] = set()  # O(1) duplicate check
         self._vectors: list[NDArray[np.floating]] = []
         self._matrix: NDArray[np.floating] | None = None
         self._dim: int = 0
     
     def store(self, key: str, vector: NDArray[np.floating]) -> None:
         """Store a normalized vector with a key."""
-        if key in self._keys:
+        if key in self._key_set:
             raise ValueError(f"Duplicate key: {key}")
         
         # Normalize
@@ -45,6 +46,7 @@ class CosineBaseline:
         normalized = vector / norm
         
         self._keys.append(key)
+        self._key_set.add(key)
         self._vectors.append(normalized.astype(np.float64))
         self._matrix = None  # Invalidate cache
         
@@ -91,6 +93,7 @@ class CosineBaseline:
     def clear(self) -> None:
         """Reset to empty state."""
         self._keys.clear()
+        self._key_set.clear()
         self._vectors.clear()
         self._matrix = None
         self._dim = 0
@@ -120,5 +123,8 @@ class CosineBaseline:
         # Key storage (rough estimate)
         key_bytes = sum(sys.getsizeof(k) for k in self._keys)
         
-        total_bytes = vector_bytes + matrix_bytes + key_bytes
+        # Set storage
+        set_bytes = sys.getsizeof(self._key_set)
+        
+        total_bytes = vector_bytes + matrix_bytes + key_bytes + set_bytes
         return total_bytes / (1024 * 1024)
