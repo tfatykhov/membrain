@@ -107,6 +107,7 @@ Defined in `protos/memory_a2a.proto`.
 | `vector` | `repeated float` | Query embedding vector. |
 | `threshold` | `float` | Minimum similarity (0.0 to 1.0). |
 | `max_results` | `int32` | Max items to return. |
+| `bypass_snn` | `bool` | If true, skip SNN/Attractor dynamics (direct cosine sim). |
 
 #### `ContextResponse`
 | Field | Type | Description |
@@ -141,9 +142,9 @@ Defined in `protos/memory_a2a.proto`.
 
 | Method | Parameters | Returns | Description |
 | :--- | :--- | :--- | :--- |
-| `__init__` | `n_neurons, dimensions, learning_rate` | `self` | Initialize SNN. |
-| `remember` | `context_id, sparse_vector, importance` | `bool` | Learn pattern. |
-| `recall` | `query_vector, threshold` | `list[RecallResult]` | Retrieve pattern. |
+| `__init__` | `n_neurons, dimensions, learning_rate, use_attractor...` | `self` | Initialize SNN and optional Attractor. |
+| `remember` | `context_id, sparse_vector, importance` | `bool` | Learn pattern (SNN + Attractor). |
+| `recall` | `query_vector, threshold, bypass_snn` | `list[RecallResult]` | Retrieve pattern (Attractor cleanup + SNN). |
 | `consolidate` | `noise_scale, max_steps, convergence_threshold` | `tuple[int, int]` | Stochastic consolidation (steps, pruned). |
 
 ### `FlyHash`

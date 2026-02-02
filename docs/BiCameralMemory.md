@@ -20,7 +20,11 @@ def __init__(
     dimensions: int = 20000,
     learning_rate: float = 1e-2,
     synapse: float = 0.01,
-    dt: float = 0.001
+    dt: float = 0.001,
+    seed: int | None = None,
+    use_attractor: bool = False,
+    attractor_learning_rate: float = 0.3,
+    attractor_max_steps: int = 50,
 )
 ```
 - **n_neurons:** Size of the neural ensemble. More neurons allow for higher capacity and resolution.
@@ -28,6 +32,10 @@ def __init__(
 - **learning_rate:** Controls how quickly weights adapt to new patterns (Voja rate).
 - **synapse:** Post-synaptic time constant (filter) in seconds.
 - **dt:** Simulation timestep (default 1ms).
+- **seed:** Random seed for reproducibility.
+- **use_attractor:** Enable explicit attractor dynamics for pattern cleanup.
+- **attractor_learning_rate:** Hebbian learning rate for the attractor network.
+- **attractor_max_steps:** Maximum iterations for attractor settling.
 
 ### Key Components (Nengo Network)
 1.  **Input Node:** Feeds the sparse vector into the system.
@@ -36,6 +44,7 @@ def __init__(
     - `-1.0` = Learning Disabled (for recall).
 3.  **Memory Ensemble:** The population of neurons representing the memories.
 4.  **Learning Connection:** Connects input to memory with the `Voja` learning rule.
+5.  **Attractor Memory:** (Optional) A separate Hebbian network that cleans up patterns before/after SNN processing.
 
 ### Methods
 
@@ -52,8 +61,9 @@ def remember(
 Stores a pattern.
 1.  **Gating:** Sets learning gate to `0.0` (enabled).
 2.  **Scaling:** Scales the `sparse_vector` by `importance`. Higher importance leads to stronger weight updates.
-3.  **Simulation:** Runs the simulator for `duration_ms`. The Voja rule moves neuron encoders towards the input vector.
-4.  **Indexing:** Stores the vector in `_memory_index` for later readout/verification.
+3.  **Attractor Storage:** If enabled, also stores the pattern in the `AttractorMemory` using Hebbian learning (outer product rule), modulated by `importance`.
+4.  **Simulation:** Runs the simulator for `duration_ms`. The Voja rule moves neuron encoders towards the input vector.
+5.  **Indexing:** Stores the vector in `_memory_index` for later readout/verification.
 
 #### `recall`
 ```python
@@ -62,15 +72,17 @@ def recall(
     query_vector: NDArray[np.floating],
     threshold: float = 0.7,
     max_results: int = 5,
-    duration_ms: int = 20
+    duration_ms: int = 20,
+    bypass_snn: bool = False
 ) -> list[RecallResult]
 ```
 Retrieves memories.
-1.  **Gating:** Sets learning gate to `-1.0` (disabled) to prevent overwriting memories with the query.
-2.  **Simulation:** Runs the simulator. The network state evolves based on the input query and stored weights.
-3.  **Readout:** Extracts the final "attractor state" from the output probe.
-4.  **Matching:** Computes cosine similarity between the attractor state and all vectors in `_memory_index`.
-5.  **Filtering:** Returns entries above `threshold`.
+1.  **Attractor Cleanup:** If `use_attractor` is True, runs the query through the attractor network to clean up noise before SNN processing.
+2.  **Gating:** Sets learning gate to `-1.0` (disabled) to prevent overwriting memories with the query.
+3.  **Simulation:** Runs the simulator. The network state evolves based on the input query and stored weights. (Skipped if `bypass_snn=True`).
+4.  **Readout:** Extracts the final "attractor state" from the output probe.
+5.  **Matching:** Computes cosine similarity between the attractor state and all vectors in `_memory_index`.
+6.  **Filtering:** Returns entries above `threshold`.
 
 #### `consolidate`
 ```python
@@ -117,6 +129,7 @@ with memory:
 - **Simulator Management:** The `nengo.Simulator` is heavy. It is initialized lazily via `_ensure_simulator()` and kept alive. The `reset()` method or context manager should be used to free resources.
 
 ## Known Limitations / TODOs
-- **Scalability:** The linear scan in `recall` (comparing against all stored vectors in `_memory_index`) is O(N). For very large memory stores, an approximate nearest neighbor index (like FAISS) should replace the dictionary loop.
+- **Scalability (Attractor Memory):** The optional `AttractorMemory` uses an $O(N^2)$ weight matrix. For default 20,000 dimensions, this requires ~1.6 GB RAM. Use with caution or reduce dimensions.
+- **Scalability (Recall):** The linear scan in `recall` (comparing against all stored vectors in `_memory_index`) is O(N). For very large memory stores, an approximate nearest neighbor index (like FAISS) should replace the dictionary loop.
 - **Hardware Acceleration:** Currently runs on CPU. Nengo supports GPU (nengo-ocl) and Neuromorphic hardware (nengo-loihi), which could be enabled via configuration.
 - **Persistence:** The `_memory_index` and the Nengo simulator state are in-memory only. They are lost on restart. Serialization (pickling the simulator/index) is needed for durability.
