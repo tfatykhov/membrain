@@ -256,9 +256,10 @@ class BiCameralMemory:
         steps = max(1, int(duration_ms / (self.dt * 1000)))
         self._simulator.run_steps(steps)
 
-        # Capture neuron response (spike activity pattern)
+        # Capture neuron response (averaged over last 10 timesteps for stability)
         spike_data = self._simulator.data[self.spike_probe]
-        neuron_response = spike_data[-1].astype(np.float32)  # Last timestep
+        window_size = min(10, len(spike_data))
+        neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
 
         # Store the SCALED vector in index (matches what network learned)
         self._memory_index[context_id] = MemoryEntry(
@@ -356,9 +357,10 @@ class BiCameralMemory:
             # Re-enable learning (0.0 = normal learning)
             self._learning_gate_value = 0.0
 
-            # Read neuron activity (spike pattern) - NOT decoded output
+            # Read neuron activity (averaged over last 10 timesteps for stability)
             spike_data = self._simulator.data[self.spike_probe]
-            query_neuron_response = spike_data[-1].astype(np.float32)
+            window_size = min(10, len(spike_data))
+            query_neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
 
             # Clear input
             self._input_value = np.zeros(self.dimensions, dtype=np.float32)
