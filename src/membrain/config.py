@@ -76,6 +76,10 @@ class MembrainConfig:
     attractor_learning_rate: float = 0.3  # Hebbian learning rate for attractor
     attractor_max_steps: int = 50  # Max dynamics iterations for cleanup
 
+    # PES decoder adaptation
+    use_pes: bool = True  # Enable PES decoder learning alongside Voja
+    pes_learning_rate: float = 1e-4  # PES learning rate for decoder adaptation
+
     @classmethod
     def from_env(cls) -> "MembrainConfig":
         """Load configuration from environment variables.
@@ -103,6 +107,8 @@ class MembrainConfig:
             MEMBRAIN_USE_ATTRACTOR: Enable attractor cleanup (default: false)
             MEMBRAIN_ATTRACTOR_LEARNING_RATE: Hebbian learning rate (default: 0.3)
             MEMBRAIN_ATTRACTOR_MAX_STEPS: Max dynamics iterations (default: 50)
+            MEMBRAIN_USE_PES: Enable PES decoder learning (default: true)
+            MEMBRAIN_PES_LEARNING_RATE: PES learning rate (default: 1e-4)
         """
         # Parse auth tokens (support both single and multi-token formats)
         tokens = _parse_token_list(os.environ.get("MEMBRAIN_AUTH_TOKENS"))
@@ -132,6 +138,8 @@ class MembrainConfig:
             use_attractor=os.environ.get("MEMBRAIN_USE_ATTRACTOR", "").lower() in ("true", "1", "yes"),
             attractor_learning_rate=float(os.environ.get("MEMBRAIN_ATTRACTOR_LEARNING_RATE", 0.3)),
             attractor_max_steps=int(os.environ.get("MEMBRAIN_ATTRACTOR_MAX_STEPS", 50)),
+            use_pes=os.environ.get("MEMBRAIN_USE_PES", "true").lower() in ("true", "1", "yes"),
+            pes_learning_rate=float(os.environ.get("MEMBRAIN_PES_LEARNING_RATE", 1e-4)),
         )
 
     @classmethod
@@ -162,6 +170,8 @@ class MembrainConfig:
             use_attractor=False,  # Disabled by default for speed
             attractor_learning_rate=0.3,
             attractor_max_steps=20,  # Faster for testing
+            use_pes=True,  # Enable PES for decoder adaptation
+            pes_learning_rate=1e-4,
         )
 
     def validate(self) -> None:
