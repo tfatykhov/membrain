@@ -1,10 +1,30 @@
 # PR-011 — Attractor Dynamics (True Pattern Completion)
 
-## Status: 🔴 Not Started — P1 Priority
+## Status: ✅ Complete (PR #20)
 
 ## Problem
 
 Current recall is similarity lookup, not true pattern completion. The SNN doesn't demonstrate attractor dynamics or cleanup behavior.
+
+---
+
+## Implementation Summary
+
+**Shipped in:** PR #20 (Stochastic Consolidation) + attractor.py
+
+**Files:**
+- `src/membrain/attractor.py` — Hopfield-style AttractorMemory class
+- `tests/test_attractor.py` — Comprehensive test coverage
+- `src/membrain/core.py` — Integration via `use_attractor` flag
+
+**Key Classes:**
+- `AttractorMemory` — Pattern storage and cleanup
+- `CleanupResult` — Convergence info (steps, converged, norms)
+- `CleanupMetrics` — Similarity before/after cleanup
+
+---
+
+## Original Problem
 
 ---
 
@@ -102,9 +122,16 @@ def test_cleanup_improves_similarity():
 
 ## Acceptance Criteria
 
-- [ ] Demonstrable pattern completion improvement
-- [ ] Recall remains read-only (learning gate enforced)
-- [ ] Benchmark shows improvement over no-attractor baseline
+- [x] Demonstrable pattern completion improvement
+- [x] Recall remains read-only (learning gate enforced)
+- [x] Benchmark shows improvement over no-attractor baseline (`bench/bench_cleanup.py`)
+
+---
+
+## Next Steps
+
+Attractor is implemented but **not yet used in recall path for query denoising**.  
+See [Feature 15: Noise-Robust Recall](./15-noise-robust-recall.md) for the plan to leverage attractor during recall.
 
 ---
 
