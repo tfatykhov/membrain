@@ -23,8 +23,8 @@ graph TD
     Input[Input Node] -->|Encoders| Memory[Memory Ensemble]
     Memory -->|Decoders| Output[Output Node]
     
-    Input -->|Target (+)| Error[Error Node]
-    Output -->|Actual (-)| Error
+    Input -->|"Target (+)"| Error[Error Node]
+    Output -->|"Actual (-)"| Error
     
     Error -->|Error Signal| PES[PES Learning Rule]
     PES -.->|Modifies| Memory
