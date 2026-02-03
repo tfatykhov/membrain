@@ -406,7 +406,7 @@ class BiCameralMemory:
 
         query = query_vector.astype(np.float32).copy()
 
-        # Apply attractor cleanup if enabled
+        # Apply attractor cleanup if enabled (only when not bypassing SNN)
         if self._attractor is not None and not bypass_snn:
             cleanup_result = self._attractor.complete(query)
             query = cleanup_result.cleaned
@@ -418,44 +418,12 @@ class BiCameralMemory:
                 },
             )
 
-        if bypass_snn:
-            # Direct cosine similarity (no SNN dynamics)
-            # This is the baseline before attractor dynamics are implemented
-            denoised_query = query  # Use raw query
-        else:
-            # Full SNN path
-            self._ensure_simulator()
-            assert self._simulator is not None
-
-            # Disable learning during recall via gate (-1.0 = no learning)
-            self._learning_gate_value = -1.0
-
-            # Inject query
-            self._input_value = query
-
-            steps = max(1, int(duration_ms / (self.dt * 1000)))
-            self._simulator.run_steps(steps)
-
-            # Re-enable learning (0.0 = normal learning)
-            self._learning_gate_value = 0.0
-
-            # Read decoded output from output_probe (PES-adapted decoders)
-            # This is the key change: use the SNN's reconstruction of the query
-            output_data = self._simulator.data[self.output_probe]
-            window_size = min(10, len(output_data))
-            denoised_query = output_data[-window_size:].mean(axis=0).astype(np.float32)
-
-            logger.debug(
-                "SNN decoding applied",
-                extra={
-                    "input_norm": float(np.linalg.norm(query)),
-                    "output_norm": float(np.linalg.norm(denoised_query)),
-                    "use_pes": self.use_pes,
-                },
-            )
-
-            # Clear input
-            self._input_value = np.zeros(self.dimensions, dtype=np.float32)
+        # Note: We skip the SNN simulation during recall because:
+        # 1. The decoded output was producing NaN/Inf values (PES weight explosion)
+        # 2. We're comparing query directly to stored patterns now
+        # 3. The SNN's value will come from proper attractor dynamics (future work)
+        # 
+        # TODO: Implement SNN-based attractor dynamics once PES is stabilized
 
         # Match against stored memories
         # Use the attractor-cleaned query (not decoded output) for comparison
