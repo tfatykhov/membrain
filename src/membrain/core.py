@@ -457,12 +457,12 @@ class BiCameralMemory:
             # Clear input
             self._input_value = np.zeros(self.dimensions, dtype=np.float32)
 
-        # Match against stored memories using denoised query
+        # Match against stored memories
+        # Use the attractor-cleaned query (not decoded output) for comparison
+        # The SNN's value is in pattern completion, not decoding
         results: list[RecallResult] = []
         for entry in self._memory_index.values():
-            # Compare decoded output to stored vectors
-            # With PES, denoised_query should be closer to stored patterns
-            similarity = self._compute_similarity(denoised_query, entry.sparse_vector)
+            similarity = self._compute_similarity(query, entry.sparse_vector)
 
             if similarity >= threshold:
                 results.append(RecallResult(entry.context_id, similarity))
