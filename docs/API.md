@@ -33,6 +33,8 @@ from membrain.config import MembrainConfig
 | `noise_scale` | `float` | `0.05` | Gaussian noise std for stochastic consolidation. |
 | `max_consolidation_steps` | `int` | `50` | Max iterations for attractor settling. |
 | `convergence_threshold` | `float` | `1e-4` | State difference to consider settled. |
+| `use_pes` | `bool` | `True` | Enable PES decoder learning. |
+| `pes_learning_rate` | `float` | `1e-4` | Learning rate for PES rule. |
 
 #### Methods
 
@@ -145,7 +147,7 @@ Defined in `protos/memory_a2a.proto`.
 
 | Method | Parameters | Returns | Description |
 | :--- | :--- | :--- | :--- |
-| `__init__` | `n_neurons, dimensions, learning_rate, use_attractor...` | `self` | Initialize SNN and optional Attractor. |
+| `__init__` | `n_neurons, dimensions, learning_rate, use_pes...` | `self` | Initialize SNN and optional Attractor. |
 | `remember` | `context_id, sparse_vector, importance` | `bool` | Learn pattern (SNN + Attractor). |
 | `recall` | `query_vector, threshold, bypass_snn` | `list[RecallResult]` | Retrieve pattern (Attractor cleanup + SNN). |
 | `consolidate` | `noise_scale, max_steps, convergence_threshold` | `tuple[int, int]` | Stochastic consolidation (steps, pruned). |

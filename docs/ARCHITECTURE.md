@@ -64,7 +64,9 @@ Implements the FlyHash algorithm (inspired by the fruit fly olfactory system).
 ### 4. Core (`membrain.core`)
 The SNN storage engine.
 - **Neurons**: Leaky Integrate-and-Fire (LIF) model.
-- **Learning**: Hebbian-style plasticity or structural plasticity (depending on implementation phase).
+- **Learning**: 
+  - **Voja**: Adjusts encoders to specialize neurons for incoming patterns.
+  - **PES**: Prescribed Error Sensitivity rule adjusts decoders to minimize reconstruction error.
 - **Consolidation**: Sleep phase processing to strengthen strong memories and prune weak ones.
 
 ---
@@ -74,7 +76,9 @@ The SNN storage engine.
 ### 1. Remember (Storage)
 1. **Input:** Client sends a dense embedding vector (e.g., from a text chunk) + `context_id`.
 2. **Encode:** `FlyHash` projects the dense vector to a sparse binary vector (e.g., 20,000-d with 50 active bits).
-3. **Learn:** `BiCameralMemory` injects the sparse vector into the SNN. The Voja learning rule adjusts synaptic weights to associate the pattern with a specific population of neurons.
+3. **Learn:** `BiCameralMemory` injects the sparse vector into the SNN. 
+   - **Voja** adjusts encoders to associate the pattern with a specific population of neurons.
+   - **PES** (if enabled) adjusts decoders to better reconstruct the input pattern from the neural activity.
 4. **Index:** The sparse vector is also stored in a fast lookup index (Python dictionary) for final confidence scoring.
 
 ### 2. Recall (Retrieval)
