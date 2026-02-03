@@ -31,6 +31,7 @@ This folder contains detailed specifications for all Membrain features.
 | 11 | [Attractor Dynamics](./11-attractor-dynamics.md) | 🔴 Not Started | P1 |
 | 12 | [Temporal Binding](./12-temporal-binding.md) | 🔴 Not Started | P1 |
 | 13 | [Persistence](./13-persistence.md) | 🔴 Not Started | P1 |
+| 15 | [Noise-Robust Recall](./15-noise-robust-recall.md) | 🟡 In Progress | P0 |
 
 ### Phase 3 — Hardware Migration
 
