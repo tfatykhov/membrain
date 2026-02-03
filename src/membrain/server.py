@@ -195,6 +195,8 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
             use_attractor=config.use_attractor,
             attractor_learning_rate=config.attractor_learning_rate,
             attractor_max_steps=config.attractor_max_steps,
+            use_pes=config.use_pes,
+            pes_learning_rate=config.pes_learning_rate,
         )
 
         # Build the simulator
@@ -202,9 +204,9 @@ class MemoryUnitServicer(memory_a2a_pb2_grpc.MemoryUnitServicer):
 
         logger.info(
             "MemoryUnitServicer initialized: "
-            "input_dim=%d, output_dim=%d, n_neurons=%d, seed=%s, use_attractor=%s",
+            "input_dim=%d, output_dim=%d, n_neurons=%d, seed=%s, use_attractor=%s, use_pes=%s",
             config.input_dim, self.output_dim, config.n_neurons,
-            config.seed or "random", config.use_attractor
+            config.seed or "random", config.use_attractor, config.use_pes
         )
 
     def _validate_context_id(self, context_id: str) -> str | None:

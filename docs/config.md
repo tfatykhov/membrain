@@ -26,6 +26,8 @@ All configuration is loaded from environment variables with sensible defaults.
 | `MEMBRAIN_ATTRACTOR_MAX_STEPS` | int | 50 | Max dynamics iterations for cleanup. |
 | `MEMBRAIN_MAX_CONSOLIDATION_STEPS` | int | 50 | Max iterations for attractor settling. |
 | `MEMBRAIN_CONVERGENCE_THRESHOLD` | float | 1e-4 | State difference to consider settled. |
+| `MEMBRAIN_USE_PES` | bool | true | Enable PES decoder learning. |
+| `MEMBRAIN_PES_LEARNING_RATE` | float | 1e-4 | Learning rate for PES rule. |
 | `MEMBRAIN_LOG_LEVEL` | string | INFO | Minimum log level. |
 | `MEMBRAIN_LOG_FORMAT` | string | json | Log format (json or text). |
 | `MEMBRAIN_LOG_FILE` | string | None | Optional file path for logs. |
@@ -44,6 +46,17 @@ config = MembrainConfig(
     max_consolidation_steps=100
 )
 ```
+
+## Learning Configuration
+
+Membrain uses multiple learning rules that can be tuned:
+
+- **`MEMBRAIN_USE_PES`**: Enables Prescribed Error Sensitivity (PES) learning for the decoders.
+  - When true, the system minimizes reconstruction error by adjusting decoder weights.
+  - Default: `true`.
+
+- **`MEMBRAIN_PES_LEARNING_RATE`**: Controls the speed of error correction.
+  - Default: `1e-4`.
 
 ## Consolidation Tuning
 

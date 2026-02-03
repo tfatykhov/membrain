@@ -90,6 +90,8 @@ class BiCameralMemory:
         use_attractor: bool = False,
         attractor_learning_rate: float = 0.3,
         attractor_max_steps: int = 50,
+        use_pes: bool = True,
+        pes_learning_rate: float = 1e-4,
     ) -> None:
         """
         Initialize the BiCameralMemory network.
@@ -104,6 +106,8 @@ class BiCameralMemory:
             use_attractor: Enable attractor cleanup during recall.
             attractor_learning_rate: Hebbian learning rate for attractor.
             attractor_max_steps: Max dynamics iterations for attractor.
+            use_pes: Enable PES decoder learning alongside Voja.
+            pes_learning_rate: PES learning rate for decoder adaptation.
 
         Raises:
             ImportError: If nengo is not installed.
@@ -121,6 +125,8 @@ class BiCameralMemory:
         self.dt = dt
         self._seed = seed
         self.use_attractor = use_attractor
+        self.use_pes = use_pes
+        self.pes_learning_rate = pes_learning_rate
 
         # RNG for stochastic operations (consolidation noise)
         self._rng = np.random.default_rng(seed)
@@ -198,10 +204,77 @@ class BiCameralMemory:
                 synapse=None,
             )
 
-            # 6. Output Probe for reading attractor states
-            self.output_probe = nengo.Probe(self.memory, synapse=self.synapse)
+            # 6. Output Node: Receives decoded output from memory ensemble
+            self.output_node = nengo.Node(size_in=self.dimensions, label="output")
 
-            # 7. Spike probe for sparsity monitoring
+            # 7. Output connection (with optional PES learning)
+            if self.use_pes:
+                # PES adapts decoders alongside Voja encoder learning
+                self.output_conn = nengo.Connection(
+                    self.memory,
+                    self.output_node,
+                    learning_rule_type=nengo.PES(learning_rate=self.pes_learning_rate),
+                    synapse=self.synapse,
+                )
+
+                # 8. Error Node: Computes reconstruction error exactly (no representation error)
+                # Using a Node instead of Ensemble avoids the dimensionality problem
+                # (250 neurons can't represent 20k dimensions accurately)
+                self._error_value: NDArray[np.float32] = np.zeros(
+                    self.dimensions, dtype=np.float32
+                )
+
+                def compute_gated_error(t: float) -> NDArray[np.floating]:
+                    """Compute error gated by learning signal.
+
+                    When learning_gate = 0.0 (remember): output full error
+                    When learning_gate = -1.0 (recall): output zero (no learning)
+                    """
+                    gate_multiplier = 1.0 + self._learning_gate_value  # 0->1, -1->0
+                    return (self._error_value * gate_multiplier).astype(np.float32)
+
+                self.error_node = nengo.Node(
+                    output=compute_gated_error,
+                    size_out=self.dimensions,
+                    label="gated_error",
+                )
+
+                # Compute raw error: input - output
+                # We'll update _error_value in simulation by probing input and output
+                def update_error(t: float, x: NDArray[np.floating]) -> None:
+                    """Update error value from concatenated [input, output]."""
+                    mid = len(x) // 2
+                    self._error_value[:] = (x[:mid] - x[mid:]).astype(np.float32)
+
+                self.error_compute = nengo.Node(
+                    output=update_error,
+                    size_in=self.dimensions * 2,
+                    size_out=0,
+                    label="error_compute",
+                )
+
+                # Feed input and output to error computation
+                nengo.Connection(self.input_node, self.error_compute[:self.dimensions], synapse=None)
+                nengo.Connection(self.output_node, self.error_compute[self.dimensions:], synapse=self.synapse)
+
+                # PES learns from gated error signal
+                nengo.Connection(self.error_node, self.output_conn.learning_rule, synapse=None)
+
+                # Keep reference for tests (replaces error ensemble)
+                self.error = self.error_node
+            else:
+                # Direct connection without PES (fixed decoders)
+                self.output_conn = nengo.Connection(
+                    self.memory,
+                    self.output_node,
+                    synapse=self.synapse,
+                )
+                self.error = None
+
+            # 9. Output Probe for reading decoded states
+            self.output_probe = nengo.Probe(self.output_node, synapse=self.synapse)
+
+            # 10. Spike probe for sparsity monitoring
             self.spike_probe = nengo.Probe(self.memory.neurons, "output")
 
     def _ensure_simulator(self) -> None:
@@ -338,13 +411,10 @@ class BiCameralMemory:
                 },
             )
 
-        # Initialize query_neuron_response for bypass case (not used but needed for scope)
-        query_neuron_response: NDArray[np.float32] | None = None
-
         if bypass_snn:
             # Direct cosine similarity (no SNN dynamics)
             # This is the baseline before attractor dynamics are implemented
-            pass  # query already set, will compare directly
+            denoised_query = query  # Use raw query
         else:
             # Full SNN path
             self._ensure_simulator()
@@ -362,30 +432,30 @@ class BiCameralMemory:
             # Re-enable learning (0.0 = normal learning)
             self._learning_gate_value = 0.0
 
-            # Read neuron activity (averaged over last 10 timesteps for stability)
-            spike_data = self._simulator.data[self.spike_probe]
-            window_size = min(10, len(spike_data))
-            query_neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
-            # Normalize to unit length for meaningful cosine similarity
-            norm = np.linalg.norm(query_neuron_response)
-            if norm > 0:
-                query_neuron_response = query_neuron_response / norm
+            # Read decoded output from output_probe (PES-adapted decoders)
+            # This is the key change: use the SNN's reconstruction of the query
+            output_data = self._simulator.data[self.output_probe]
+            window_size = min(10, len(output_data))
+            denoised_query = output_data[-window_size:].mean(axis=0).astype(np.float32)
+
+            logger.debug(
+                "SNN decoding applied",
+                extra={
+                    "input_norm": float(np.linalg.norm(query)),
+                    "output_norm": float(np.linalg.norm(denoised_query)),
+                    "use_pes": self.use_pes,
+                },
+            )
 
             # Clear input
             self._input_value = np.zeros(self.dimensions, dtype=np.float32)
 
-        # Match against stored memories
+        # Match against stored memories using denoised query
         results: list[RecallResult] = []
         for entry in self._memory_index.values():
-            if bypass_snn:
-                # Compare FlyHash vectors directly
-                similarity = self._compute_similarity(query, entry.sparse_vector)
-            else:
-                # SNN path: Compare FlyHash vectors directly
-                # NOTE: Neuron response comparison doesn't work well yet because
-                # Voja learning doesn't create enough selectivity with few patterns.
-                # Future work: implement proper attractor dynamics in the SNN.
-                similarity = self._compute_similarity(query, entry.sparse_vector)
+            # Compare decoded output to stored vectors
+            # With PES, denoised_query should be closer to stored patterns
+            similarity = self._compute_similarity(denoised_query, entry.sparse_vector)
 
             if similarity >= threshold:
                 results.append(RecallResult(entry.context_id, similarity))
