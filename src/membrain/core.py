@@ -48,6 +48,7 @@ class MemoryEntry:
     sparse_vector: NDArray[np.float32]
     importance: float
     stored_at: float
+    neuron_response: NDArray[np.float32] | None = None  # Neuron activity during storage
 
 
 @dataclass
@@ -255,12 +256,23 @@ class BiCameralMemory:
         steps = max(1, int(duration_ms / (self.dt * 1000)))
         self._simulator.run_steps(steps)
 
+        # Capture neuron response (averaged over last 10 timesteps for stability)
+        # Note: This is experimental - neuron responses may not be discriminative enough
+        spike_data = self._simulator.data[self.spike_probe]
+        window_size = min(10, len(spike_data))
+        neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
+        # Normalize to unit length for meaningful cosine similarity
+        norm = np.linalg.norm(neuron_response)
+        if norm > 0:
+            neuron_response = neuron_response / norm
+
         # Store the SCALED vector in index (matches what network learned)
         self._memory_index[context_id] = MemoryEntry(
             context_id=context_id,
             sparse_vector=scaled_vector.copy(),
             importance=importance,
             stored_at=self._simulator.time,
+            neuron_response=neuron_response,
         )
 
         # Also store in attractor if enabled (with importance for basin depth)
@@ -326,10 +338,13 @@ class BiCameralMemory:
                 },
             )
 
+        # Initialize query_neuron_response for bypass case (not used but needed for scope)
+        query_neuron_response: NDArray[np.float32] | None = None
+
         if bypass_snn:
             # Direct cosine similarity (no SNN dynamics)
             # This is the baseline before attractor dynamics are implemented
-            comparison_vector = query
+            pass  # query already set, will compare directly
         else:
             # Full SNN path
             self._ensure_simulator()
@@ -347,9 +362,14 @@ class BiCameralMemory:
             # Re-enable learning (0.0 = normal learning)
             self._learning_gate_value = 0.0
 
-            # Read output probe (attractor state)
-            output_data = self._simulator.data[self.output_probe]
-            comparison_vector = output_data[-1]  # Last timestep
+            # Read neuron activity (averaged over last 10 timesteps for stability)
+            spike_data = self._simulator.data[self.spike_probe]
+            window_size = min(10, len(spike_data))
+            query_neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
+            # Normalize to unit length for meaningful cosine similarity
+            norm = np.linalg.norm(query_neuron_response)
+            if norm > 0:
+                query_neuron_response = query_neuron_response / norm
 
             # Clear input
             self._input_value = np.zeros(self.dimensions, dtype=np.float32)
@@ -357,7 +377,16 @@ class BiCameralMemory:
         # Match against stored memories
         results: list[RecallResult] = []
         for entry in self._memory_index.values():
-            similarity = self._compute_similarity(comparison_vector, entry.sparse_vector)
+            if bypass_snn:
+                # Compare FlyHash vectors directly
+                similarity = self._compute_similarity(query, entry.sparse_vector)
+            else:
+                # SNN path: Compare FlyHash vectors directly
+                # NOTE: Neuron response comparison doesn't work well yet because
+                # Voja learning doesn't create enough selectivity with few patterns.
+                # Future work: implement proper attractor dynamics in the SNN.
+                similarity = self._compute_similarity(query, entry.sparse_vector)
+
             if similarity >= threshold:
                 results.append(RecallResult(entry.context_id, similarity))
 
@@ -528,7 +557,9 @@ class BiCameralMemory:
         norm2 = float(np.linalg.norm(vec2))
         if norm1 < eps or norm2 < eps:
             return 0.0
-        return float(np.dot(vec1, vec2) / (norm1 * norm2))
+        similarity = float(np.dot(vec1, vec2) / (norm1 * norm2))
+        # Clamp to [0, 1] to handle floating point precision issues
+        return max(0.0, min(1.0, similarity))
 
     def reset(self) -> None:
         """Reset the memory system and release resources."""

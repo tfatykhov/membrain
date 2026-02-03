@@ -63,7 +63,8 @@ Stores a pattern.
 2.  **Scaling:** Scales the `sparse_vector` by `importance`. Higher importance leads to stronger weight updates.
 3.  **Attractor Storage:** If enabled, also stores the pattern in the `AttractorMemory` using Hebbian learning (outer product rule), modulated by `importance`.
 4.  **Simulation:** Runs the simulator for `duration_ms`. The Voja rule moves neuron encoders towards the input vector.
-5.  **Indexing:** Stores the vector in `_memory_index` for later readout/verification.
+5.  **Neuron Response:** Captures the neural activity during storage for potential future use in similarity comparison.
+6.  **Indexing:** Stores the vector, importance, and neuron response in `_memory_index`.
 
 #### `recall`
 ```python
@@ -79,10 +80,11 @@ def recall(
 Retrieves memories.
 1.  **Attractor Cleanup:** If `use_attractor` is True, runs the query through the attractor network to clean up noise before SNN processing.
 2.  **Gating:** Sets learning gate to `-1.0` (disabled) to prevent overwriting memories with the query.
-3.  **Simulation:** Runs the simulator. The network state evolves based on the input query and stored weights. (Skipped if `bypass_snn=True`).
-4.  **Readout:** Extracts the final "attractor state" from the output probe.
-5.  **Matching:** Computes cosine similarity between the attractor state and all vectors in `_memory_index`.
-6.  **Filtering:** Returns entries above `threshold`.
+3.  **Simulation:** Runs the simulator (if `bypass_snn=False`). The network state evolves based on the input query.
+4.  **Matching:** Computes cosine similarity between the query vector (possibly cleaned by attractor) and all stored sparse vectors in `_memory_index`.
+    - **Note:** The similarity score is clamped to `[0, 1]` to handle floating point precision issues.
+    - **Note:** Comparing the SNN's output "neuron response" against stored responses is currently experimental and disabled (future research needed). The SNN path currently relies on the Attractor Memory for cleanup and then uses vector comparison, similar to `bypass_snn`.
+5.  **Filtering:** Returns entries above `threshold`.
 
 #### `consolidate`
 ```python
