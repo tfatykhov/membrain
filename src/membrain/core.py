@@ -373,6 +373,7 @@ class BiCameralMemory:
                 similarity = self._compute_similarity(query, entry.sparse_vector)
             else:
                 # Compare neuron response patterns
+                assert query_neuron_response is not None  # Set in else branch above
                 if entry.neuron_response is not None:
                     similarity = self._compute_similarity(
                         query_neuron_response, entry.neuron_response
