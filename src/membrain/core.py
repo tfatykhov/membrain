@@ -257,9 +257,14 @@ class BiCameralMemory:
         self._simulator.run_steps(steps)
 
         # Capture neuron response (averaged over last 10 timesteps for stability)
+        # Note: This is experimental - neuron responses may not be discriminative enough
         spike_data = self._simulator.data[self.spike_probe]
         window_size = min(10, len(spike_data))
         neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
+        # Normalize to unit length for meaningful cosine similarity
+        norm = np.linalg.norm(neuron_response)
+        if norm > 0:
+            neuron_response = neuron_response / norm
 
         # Store the SCALED vector in index (matches what network learned)
         self._memory_index[context_id] = MemoryEntry(
@@ -361,6 +366,10 @@ class BiCameralMemory:
             spike_data = self._simulator.data[self.spike_probe]
             window_size = min(10, len(spike_data))
             query_neuron_response = spike_data[-window_size:].mean(axis=0).astype(np.float32)
+            # Normalize to unit length for meaningful cosine similarity
+            norm = np.linalg.norm(query_neuron_response)
+            if norm > 0:
+                query_neuron_response = query_neuron_response / norm
 
             # Clear input
             self._input_value = np.zeros(self.dimensions, dtype=np.float32)
@@ -372,15 +381,11 @@ class BiCameralMemory:
                 # Compare FlyHash vectors directly
                 similarity = self._compute_similarity(query, entry.sparse_vector)
             else:
-                # Compare neuron response patterns
-                assert query_neuron_response is not None  # Set in else branch above
-                if entry.neuron_response is not None:
-                    similarity = self._compute_similarity(
-                        query_neuron_response, entry.neuron_response
-                    )
-                else:
-                    # Fallback to vector comparison for old entries
-                    similarity = self._compute_similarity(query, entry.sparse_vector)
+                # SNN path: Compare FlyHash vectors directly
+                # NOTE: Neuron response comparison doesn't work well yet because
+                # Voja learning doesn't create enough selectivity with few patterns.
+                # Future work: implement proper attractor dynamics in the SNN.
+                similarity = self._compute_similarity(query, entry.sparse_vector)
 
             if similarity >= threshold:
                 results.append(RecallResult(entry.context_id, similarity))
@@ -552,7 +557,9 @@ class BiCameralMemory:
         norm2 = float(np.linalg.norm(vec2))
         if norm1 < eps or norm2 < eps:
             return 0.0
-        return float(np.dot(vec1, vec2) / (norm1 * norm2))
+        similarity = float(np.dot(vec1, vec2) / (norm1 * norm2))
+        # Clamp to [0, 1] to handle floating point precision issues
+        return max(0.0, min(1.0, similarity))
 
     def reset(self) -> None:
         """Reset the memory system and release resources."""
