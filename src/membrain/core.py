@@ -224,14 +224,14 @@ class BiCameralMemory:
                     self.dimensions, dtype=np.float32
                 )
 
-                def compute_gated_error(t: float) -> NDArray[np.float32]:
+                def compute_gated_error(t: float) -> NDArray[np.floating]:
                     """Compute error gated by learning signal.
-                    
+
                     When learning_gate = 0.0 (remember): output full error
                     When learning_gate = -1.0 (recall): output zero (no learning)
                     """
                     gate_multiplier = 1.0 + self._learning_gate_value  # 0->1, -1->0
-                    return self._error_value * gate_multiplier
+                    return (self._error_value * gate_multiplier).astype(np.float32)
 
                 self.error_node = nengo.Node(
                     output=compute_gated_error,
@@ -244,7 +244,7 @@ class BiCameralMemory:
                 def update_error(t: float, x: NDArray[np.floating]) -> None:
                     """Update error value from concatenated [input, output]."""
                     mid = len(x) // 2
-                    self._error_value = (x[:mid] - x[mid:]).astype(np.float32)
+                    self._error_value[:] = (x[:mid] - x[mid:]).astype(np.float32)
 
                 self.error_compute = nengo.Node(
                     output=update_error,
