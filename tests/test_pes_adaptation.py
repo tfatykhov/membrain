@@ -36,13 +36,14 @@ class TestPESIntegration:
         assert mem.error is None  # No error ensemble when PES disabled
 
     def test_error_ensemble_created(self) -> None:
-        """Error ensemble should be created when PES is enabled."""
+        """Error node should be created when PES is enabled."""
         mem = BiCameralMemory(
             n_neurons=100,
             dimensions=64,
             use_pes=True,
             seed=42,
         )
+        # error is now a Node, not an Ensemble
         assert mem.error is not None
 
     def test_output_node_created(self) -> None:
@@ -57,6 +58,26 @@ class TestPESIntegration:
 
 class TestPESLearning:
     """Tests for PES learning behavior."""
+
+    def test_error_gated_during_recall(self) -> None:
+        """Error signal should be zero during recall (gate = -1)."""
+        mem = BiCameralMemory(
+            n_neurons=100,
+            dimensions=64,
+            use_pes=True,
+            seed=42,
+        )
+
+        # Store a pattern (learning enabled, gate = 0)
+        pattern = np.random.randn(64).astype(np.float32)
+        pattern = pattern / np.linalg.norm(pattern)
+        mem.remember("test", pattern)
+
+        # After remember, check error was computed (non-zero during learning)
+        # During recall, gate is -1, so gated error should be zero
+        mem._learning_gate_value = -1.0
+        gated_error = mem.error_node.output(0.0)
+        assert np.allclose(gated_error, 0.0), "Gated error should be zero during recall"
 
     def test_pes_learning_disabled_during_recall(self) -> None:
         """PES learning should be disabled during recall (gate = -1)."""

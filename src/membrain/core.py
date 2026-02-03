@@ -217,28 +217,51 @@ class BiCameralMemory:
                     synapse=self.synapse,
                 )
 
-                # 8. Error Ensemble: Computes reconstruction error (input - output)
-                self.error = nengo.Ensemble(
-                    n_neurons=max(100, self.n_neurons // 4),
-                    dimensions=self.dimensions,
-                    label="error",
+                # 8. Error Node: Computes reconstruction error exactly (no representation error)
+                # Using a Node instead of Ensemble avoids the dimensionality problem
+                # (250 neurons can't represent 20k dimensions accurately)
+                self._error_value: NDArray[np.float32] = np.zeros(
+                    self.dimensions, dtype=np.float32
                 )
 
-                # Error = input - output
-                nengo.Connection(self.input_node, self.error, transform=1)
-                nengo.Connection(self.output_node, self.error, transform=-1)
+                def compute_gated_error(t: float) -> NDArray[np.float32]:
+                    """Compute error gated by learning signal.
+                    
+                    When learning_gate = 0.0 (remember): output full error
+                    When learning_gate = -1.0 (recall): output zero (no learning)
+                    """
+                    gate_multiplier = 1.0 + self._learning_gate_value  # 0->1, -1->0
+                    return self._error_value * gate_multiplier
 
-                # PES learns from error signal
-                nengo.Connection(self.error, self.output_conn.learning_rule)
-
-                # Gate PES same as Voja (learn during remember, not recall)
-                # PES modulation: error * (1 + gate), so gate=-1 -> error*0 = no learning
-                nengo.Connection(
-                    self.learning_gate,
-                    self.output_conn.learning_rule,
-                    transform=np.ones((self.dimensions, 1)),
-                    synapse=None,
+                self.error_node = nengo.Node(
+                    output=compute_gated_error,
+                    size_out=self.dimensions,
+                    label="gated_error",
                 )
+
+                # Compute raw error: input - output
+                # We'll update _error_value in simulation by probing input and output
+                def update_error(t: float, x: NDArray[np.floating]) -> None:
+                    """Update error value from concatenated [input, output]."""
+                    mid = len(x) // 2
+                    self._error_value = (x[:mid] - x[mid:]).astype(np.float32)
+
+                self.error_compute = nengo.Node(
+                    output=update_error,
+                    size_in=self.dimensions * 2,
+                    size_out=0,
+                    label="error_compute",
+                )
+
+                # Feed input and output to error computation
+                nengo.Connection(self.input_node, self.error_compute[:self.dimensions], synapse=None)
+                nengo.Connection(self.output_node, self.error_compute[self.dimensions:], synapse=self.synapse)
+
+                # PES learns from gated error signal
+                nengo.Connection(self.error_node, self.output_conn.learning_rule, synapse=None)
+
+                # Keep reference for tests (replaces error ensemble)
+                self.error = self.error_node
             else:
                 # Direct connection without PES (fixed decoders)
                 self.output_conn = nengo.Connection(
