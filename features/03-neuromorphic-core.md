@@ -82,6 +82,7 @@ class MemoryEntry:
     sparse_vector: np.ndarray
     importance: float
     stored_at: float  # Simulation time
+    neuron_response: Optional[np.ndarray] = None  # Neuron activity during storage
 
 
 class BiCameralMemory:
@@ -251,19 +252,20 @@ class BiCameralMemory:
         steps = int(duration_ms / (self.dt * 1000))
         self._simulator.run_steps(steps)
 
-        # Read output probe (attractor state)
-        output_data = self._simulator.data[self.output_probe]
-        attractor_state = output_data[-1]  # Last timestep
-
         # Clear input
         self._input_value = np.zeros(self.dimensions)
 
         # Match against stored memories
+        # Note: Neuron response comparison is currently experimental (future research).
+        # We compare the input query vector against stored sparse vectors.
         results = []
         for entry in self._memory_index.values():
             similarity = self._compute_similarity(
-                attractor_state, entry.sparse_vector
+                query_vector, entry.sparse_vector
             )
+            # Similarity is clamped to [0, 1]
+            similarity = max(0.0, min(1.0, similarity))
+            
             if similarity >= threshold:
                 results.append((entry.context_id, similarity))
 
